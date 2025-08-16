@@ -89,7 +89,7 @@ def load_translations(lang):
 def main():
     # Configuración de idioma
      
-    st.sidebar.title("🌍 Language / Idioma / Langue"])
+    st.sidebar.title("🌍 Language / Idioma / Langue")
     idioma = st.sidebar.radio("", ["Español", "English", "Français"])
     codigo_idioma = {"Español": "es", "English": "en", "Français": "fr"}[idioma]
     tr = cargar_traducciones(codigo_idioma)

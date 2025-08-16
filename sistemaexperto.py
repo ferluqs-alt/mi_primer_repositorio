@@ -34,8 +34,8 @@ para aprender sobre rinitis alérgica de manera interactiva y gamificada.
 print("🔧 Configurando entorno de Google Colab...")
 
 # Instalar dependencias
-!pip install streamlit -q
-!pip install pyngrok -q
+#!pip install streamlit -q
+#!pip install pyngrok -q
 
 # Configurar ngrok para acceso público (opcional)
 # Descomentar las siguientes líneas si quieres acceso público:

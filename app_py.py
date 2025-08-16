@@ -1,312 +1,472 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from io import StringIO
+import os
+import json
+from pathlib import Path
 
-# Configuración inicial
-st.set_page_config(layout="wide", page_title="Estimador de Precios de Viviendas")
+# Configuración de la página
+st.set_page_config(
+    page_title="Dataset Analysis",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Diccionarios de traducción
-translations = {
-    "ESPAÑOL": {
-        "title": "ESTIMADOR DE PRECIOS DE VIVIENDAS",
-        "upload": "Sube tu archivo CSV",
-        "file_limit": "Límite: 200MB por archivo • CSV",
-        "quick_preview": "Vista Previa Rápida",
-        "null_analysis": "Análisis de Datos Nulos",
-        "duplicates_analysis": "Análisis de Duplicados",
-        "outliers_analysis": "Análisis de Outliers",
-        "treatment_options": "Opciones de Tratamiento",
-        "apply": "Aplicar",
-        "reset": "Resetear",
-        "report": "Reporte EDA",
-        "language": "Idioma",
-        "file_loaded": "Archivo cargado",
-        "size": "Tamaño",
-        "null_values": "Valores nulos por columna",
-        "treatment_select": "Seleccione tratamiento",
-        "drop_nulls": "Eliminar filas con nulos",
-        "fill_mean": "Rellenar con media (numéricos)",
-        "fill_median": "Rellenar con mediana (numéricos)",
-        "fill_value": "Rellenar con valor específico",
-        "fill_input": "Valor de relleno",
-        "treatment_success": "Tratamiento aplicado correctamente",
-        "duplicates_found": "Filas duplicadas encontradas",
-        "duplicates_show": "Filas duplicadas",
-        "drop_duplicates": "Eliminar duplicados",
-        "outlier_select": "Seleccione columna para análisis",
-        "outlier_treatment": "Tratamiento para outliers",
-        "remove_outliers": "Eliminar outliers",
-        "cap_outliers": "Transformar a valores límite",
-        "eda_report": "Reporte de Análisis Exploratorio",
-        "generate_report": "Generar Reporte EDA",
-        "download_report": "Descargar Reporte",
-        "report_preview": "Vista previa del reporte",
-        "upload_prompt": "Por favor, sube un archivo CSV para comenzar el análisis"
-    },
-    "ENGLISH": {
-        "title": "HOUSE PRICE ESTIMATOR",
-        "upload": "Upload your CSV file",
-        "file_limit": "Limit: 200MB per file • CSV",
-        "quick_preview": "Quick Preview",
-        "null_analysis": "Null Values Analysis",
-        "duplicates_analysis": "Duplicates Analysis",
-        "outliers_analysis": "Outliers Analysis",
-        "treatment_options": "Treatment Options",
-        "apply": "Apply",
-        "reset": "Reset",
-        "report": "EDA Report",
-        "language": "Language",
-        "file_loaded": "File loaded",
-        "size": "Size",
-        "null_values": "Null values by column",
-        "treatment_select": "Select treatment",
-        "drop_nulls": "Drop rows with nulls",
-        "fill_mean": "Fill with mean (numeric only)",
-        "fill_median": "Fill with median (numeric only)",
-        "fill_value": "Fill with specific value",
-        "fill_input": "Fill value",
-        "treatment_success": "Treatment applied successfully",
-        "duplicates_found": "Duplicate rows found",
-        "duplicates_show": "Duplicate rows",
-        "drop_duplicates": "Remove duplicates",
-        "outlier_select": "Select column for analysis",
-        "outlier_treatment": "Outlier treatment",
-        "remove_outliers": "Remove outliers",
-        "cap_outliers": "Cap to threshold values",
-        "eda_report": "Exploratory Data Analysis Report",
-        "generate_report": "Generate EDA Report",
-        "download_report": "Download Report",
-        "report_preview": "Report preview",
-        "upload_prompt": "Please upload a CSV file to begin analysis"
-    },
-    "FRANÇAIS": {
-        "title": "ESTIMATEUR DE PRIX IMMOBILIERS",
-        "upload": "Téléchargez votre fichier CSV",
-        "file_limit": "Limite: 200MB par fichier • CSV",
-        "quick_preview": "Aperçu Rapide",
-        "null_analysis": "Analyse des Valeurs Manquantes",
-        "duplicates_analysis": "Analyse des Doublons",
-        "outliers_analysis": "Analyse des Valeurs Aberrantes",
-        "treatment_options": "Options de Traitement",
-        "apply": "Appliquer",
-        "reset": "Réinitialiser",
-        "report": "Rapport EDA",
-        "language": "Langue",
-        "file_loaded": "Fichier chargé",
-        "size": "Taille",
-        "null_values": "Valeurs manquantes par colonne",
-        "treatment_select": "Sélectionnez un traitement",
-        "drop_nulls": "Supprimer les lignes avec valeurs manquantes",
-        "fill_mean": "Remplir avec la moyenne (numériques seulement)",
-        "fill_median": "Remplir avec la médiane (numériques seulement)",
-        "fill_value": "Remplir avec une valeur spécifique",
-        "fill_input": "Valeur de remplissage",
-        "treatment_success": "Traitement appliqué avec succès",
-        "duplicates_found": "Lignes en double trouvées",
-        "duplicates_show": "Lignes en double",
-        "drop_duplicates": "Supprimer les doublons",
-        "outlier_select": "Sélectionnez une colonne pour analyse",
-        "outlier_treatment": "Traitement des valeurs aberrantes",
-        "remove_outliers": "Supprimer les valeurs aberrantes",
-        "cap_outliers": "Limiter aux valeurs seuils",
-        "eda_report": "Rapport d'Analyse Exploratoire",
-        "generate_report": "Générer Rapport EDA",
-        "download_report": "Télécharger le Rapport",
-        "report_preview": "Aperçu du rapport",
-        "upload_prompt": "Veuillez télécharger un fichier CSV pour commencer l'analyse"
+# Cargar traducciones
+def load_translations(lang):
+    translations = {
+        "es": {
+            "title": "🔍 ESTIMADOR DE PRECIOS DE VIVIENDAS",
+            "upload_label": "Sube tu archivo CSV",
+            "upload_help": "Selecciona el dataset que deseas analizar",
+            "file_loaded": "Archivo cargado:",
+            "file_size": "Tamaño:",
+            "quick_preview": "Vista Previa Rápida",
+            "analysis_btn": "Analisis datos nulos",
+            "analysis_help": "Analiza el dataset para valores nulos y problemas comunes",
+            "export_label": "¿Deseas exportar el análisis de valores nulos?",
+            "export_btn": "Descargar Análisis de Nulos",
+            "duplicates_btn": "Análisis de Duplicados",
+            "outliers_btn": "Análisis de Outliers",
+            "null_treatment_btn": "Tratamiento de Datos Nulos",
+            "basic_info": "Información Básica",
+            "rows": "Número de filas:",
+            "cols": "Número de columnas:",
+            "null_tab": "Valores Nulos",
+            "types_tab": "Tipos de Datos",
+            "stats_tab": "Estadísticas",
+            "sample_tab": "Muestra de Datos",
+            "null_title": "Valores Nulos por Columna",
+            "col_name": "Columna",
+            "null_count": "Valores Nulos",
+            "null_percent": "Porcentaje (%)",
+            "null_warning": "⚠️ El dataset contiene valores nulos que deben ser tratados",
+            "null_success": "✅ No se encontraron valores nulos en el dataset",
+            "types_title": "Tipos de Datos por Columna",
+            "data_type": "Tipo de Dato",
+            "numeric_cols": "Columnas numéricas:",
+            "non_numeric_cols": "Columnas no numéricas:",
+            "stats_title": "Estadísticas Descriptivas",
+            "sample_title": "Muestra de Datos (Primeras 10 filas)",
+            "duplicates_title": "Análisis de Duplicados",
+            "total_duplicates": "Filas duplicadas totales:",
+            "duplicate_rows": "Filas duplicadas:",
+            "outliers_title": "Análisis de Outliers",
+            "outliers_col": "Columna:",
+            "outliers_count": "Outliers detectados:",
+            "outliers_percent": "Porcentaje de outliers:",
+            "treatment_title": "Tratamiento de Datos Nulos",
+            "treatment_option1": "Eliminar filas con valores nulos",
+            "treatment_option2": "Rellenar con la media ",
+            "treatment_option3": "Rellenar con la mediana",
+            "treatment_option4": "Rellenar con valor específico:",
+            "apply_treatment": "Aplicar Tratamiento",
+            "treatment_success": "Tratamiento aplicado correctamente",
+            "no_nulls": "No hay valores nulos para tratar",
+            "herramientas_analisis": "Depuración de dataset",
+            "selector_idioma": "Seleccione idioma",
+            "dataset_tras_tratamiento": "Dataset después del tratamiento"
+        },
+        "en": {
+            "title": "🔍 Dataset Analysis and Cleaning",
+            "upload_label": "Upload your CSV file",
+            "upload_help": "Select the dataset you want to analyze",
+            "file_loaded": "File loaded:",
+            "file_size": "Size:",
+            "quick_preview": "Quick Preview",
+            "analysis_btn": "Run Data Analysis",
+            "analysis_help": "Analyze the dataset for null values and common issues",
+            "export_label": "Do you want to export the null analysis?",
+            "export_btn": "Download Null Analysis",
+            "duplicates_btn": "Duplicate Analysis",
+            "outliers_btn": "Outliers Analysis",
+            "null_treatment_btn": "Null Data Treatment",
+            "basic_info": "Basic Information",
+            "rows": "Number of rows:",
+            "cols": "Number of columns:",
+            "null_tab": "Null Values",
+            "types_tab": "Data Types",
+            "stats_tab": "Statistics",
+            "sample_tab": "Data Sample",
+            "null_title": "Null Values by Column",
+            "col_name": "Column",
+            "null_count": "Null Values",
+            "null_percent": "Percentage (%)",
+            "null_warning": "⚠️ The dataset contains null values that need treatment",
+            "null_success": "✅ No null values found in the dataset",
+            "types_title": "Data Types by Column",
+            "data_type": "Data Type",
+            "numeric_cols": "Numeric columns:",
+            "non_numeric_cols": "Non-numeric columns:",
+            "stats_title": "Descriptive Statistics",
+            "sample_title": "Data Sample (First 10 rows)",
+            "duplicates_title": "Duplicate Analysis",
+            "total_duplicates": "Total duplicate rows:",
+            "duplicate_rows": "Duplicate rows:",
+            "outliers_title": "Outliers Analysis",
+            "outliers_col": "Column:",
+            "outliers_count": "Outliers detected:",
+            "outliers_percent": "Outliers percentage:",
+            "treatment_title": "Null Data Treatment",
+            "treatment_option1": "Drop rows with null values",
+            "treatment_option2": "Fill with mean (numeric columns)",
+            "treatment_option3": "Fill with mode (categorical columns)",
+            "treatment_option4": "Fill with specific value:",
+            "apply_treatment": "Apply Treatment",
+            "treatment_success": "Treatment applied successfully",
+            "no_nulls": "No null values to treat",
+            "herramientas_analisis": "Analysis Tools",
+            "selector_idioma": "Select language",
+            "dataset_tras_tratamiento": "Dataset after treatment"
+        },
+        "fr": {
+            "title": "🔍 Analyse et Nettoyage de Données",
+            "upload_label": "Téléchargez votre fichier CSV",
+            "upload_help": "Sélectionnez le jeu de données à analyser",
+            "file_loaded": "Fichier chargé:",
+            "file_size": "Taille:",
+            "quick_preview": "Aperçu Rapide",
+            "analysis_btn": "Exécuter l'Analyse des Données",
+            "analysis_help": "Analyser le jeu de données pour les valeurs nulles et problèmes courants",
+            "export_label": "Voulez-vous exporter l'analyse des valeurs nulles?",
+            "export_btn": "Télécharger l'Analyse des Nuls",
+            "duplicates_btn": "Analyse des Doublons",
+            "outliers_btn": "Analyse des Valeurs Aberrantes",
+            "null_treatment_btn": "Traitement des Données Nulles",
+            "basic_info": "Informations de Base",
+            "rows": "Nombre de lignes:",
+            "cols": "Nombre de colonnes:",
+            "null_tab": "Valeurs Nulles",
+            "types_tab": "Types de Données",
+            "stats_tab": "Statistiques",
+            "sample_tab": "Échantillon de Données",
+            "null_title": "Valeurs Nulles par Colonne",
+            "col_name": "Colonne",
+            "null_count": "Valeurs Nulles",
+            "null_percent": "Pourcentage (%)",
+            "null_warning": "⚠️ Le jeu de données contient des valeurs nulles à traiter",
+            "null_success": "✅ Aucune valeur nulle trouvée dans le jeu de données",
+            "types_title": "Types de Données par Colonne",
+            "data_type": "Type de Donnée",
+            "numeric_cols": "Colonnes numériques:",
+            "non_numeric_cols": "Colonnes non numériques:",
+            "stats_title": "Statistiques Descriptives",
+            "sample_title": "Échantillon de Données (10 premières lignes)",
+            "duplicates_title": "Analyse des Doublons",
+            "total_duplicates": "Lignes dupliquées totales:",
+            "duplicate_rows": "Lignes dupliquées:",
+            "outliers_title": "Analyse des Valeurs Aberrantes",
+            "outliers_col": "Colonne:",
+            "outliers_count": "Valeurs aberrantes détectées:",
+            "outliers_percent": "Pourcentage de valeurs aberrantes:",
+            "treatment_title": "Traitement des Données Nulles",
+            "treatment_option1": "Supprimer les lignes avec valeurs nulles",
+            "treatment_option2": "Remplir avec la moyenne (colonnes numériques)",
+            "treatment_option3": "Remplir avec le mode (colonnes catégorielles)",
+            "treatment_option4": "Remplir avec une valeur spécifique:",
+            "apply_treatment": "Appliquer le Traitement",
+            "treatment_success": "Traitement appliqué avec succès",
+            "no_nulls": "Aucune valeur nulle à traiter",
+            "herramientas_analisis": "Outils d'Analyse",
+            "selector_idioma": "Choisir la langue",
+            "dataset_tras_tratamiento": "Dataset après traitement"
+            
+        }
     }
-}
+    return translations.get(lang, translations["en"])
 
-# Sidebar para idioma y selección de análisis
-with st.sidebar:
-    st.header("Language / idioma / Langue")
-    language = st.radio("", ["ESPAÑOL", "ENGLISH", "FRANÇAIS"], label_visibility="collapsed")
-    
-    tr = translations[language]  # Seleccionar traducciones según idioma
-    
-    st.header(tr.get("analysis_section", "Depuración de dataset"))
-    analysis_option = st.radio("", [
-        tr["null_analysis"],
-        tr["duplicates_analysis"],
-        tr["outliers_analysis"]
-    ])
-
-# Función para cargar datos
-@st.cache_data
-def load_data(uploaded_file):
+# Función para cargar el archivo CSV
+def load_dataset(file):
     try:
-        return pd.read_csv(uploaded_file)
+        # Intentar con diferentes codificaciones comunes
+        encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
+        
+        for encoding in encodings:
+            try:
+                df = pd.read_csv(file, encoding=encoding)
+                return df
+            except UnicodeDecodeError:
+                continue
+        
+        # Si ninguna codificación funcionó
+        st.error("Could not read the file with common encodings.")
+        return None
+        
     except Exception as e:
-        st.error(f"Error al cargar el archivo: {str(e)}")
+        st.error(f"Error loading file: {str(e)}")
         return None
 
-# Función para análisis EDA
-def generate_eda_report(df, language):
-    report = StringIO()
+# Función para mostrar el análisis de depuración
+def show_analysis(df, tr):
+    st.subheader("📊 " + tr["basic_info"])
+    st.write(f"**{tr['rows']}** {df.shape[0]}")
+    st.write(f"**{tr['cols']}** {df.shape[1]}")
     
-    # Título según idioma
-    titles = {
-        "ESPAÑOL": "=== REPORTE DE ANÁLISIS EXPLORATORIO ===",
-        "ENGLISH": "=== EXPLORATORY DATA ANALYSIS REPORT ===",
-        "FRANÇAIS": "=== RAPPORT D'ANALYSE EXPLORATOIRE ==="
-    }
-    report.write(f"{titles[language]}\n\n")
+    # Crear pestañas para diferentes análisis
+    tab1, tab2, tab3, tab4 = st.tabs([
+        tr["null_tab"], 
+        tr["types_tab"], 
+        tr["stats_tab"], 
+        tr["sample_tab"]
+    ])
     
-    # Información básica
-    section_titles = {
-        "ESPAÑOL": ["1. INFORMACIÓN BÁSICA:", "2. ESTADÍSTICAS DESCRIPTIVAS:", 
-                   "3. DATOS NULOS:", "4. FILAS DUPLICADAS:", "5. TIPOS DE DATOS:"],
-        "ENGLISH": ["1. BASIC INFORMATION:", "2. DESCRIPTIVE STATISTICS:", 
-                   "3. NULL VALUES:", "4. DUPLICATE ROWS:", "5. DATA TYPES:"],
-        "FRANÇAIS": ["1. INFORMATIONS DE BASE:", "2. STATISTIQUES DESCRIPTIVES:", 
-                    "3. VALEURS MANQUANTES:", "4. LIGNES EN DOUBLE:", "5. TYPES DE DONNÉES:"]
-    }
+    with tab1:
+        st.write("### " + tr["null_title"])
+        nulls = df.isnull().sum()
+        nulls_percent = (nulls / len(df)) * 100
+        
+        # Crear DataFrame para mostrar
+        nulls_df = pd.DataFrame({
+            tr["col_name"]: nulls.index,
+            tr["null_count"]: nulls.values,
+            tr["null_percent"]: nulls_percent.values.round(2)
+        })
+        
+        st.dataframe(nulls_df.style.highlight_max(
+            axis=0, 
+            subset=[tr["null_count"], tr["null_percent"]],
+            color='salmon'
+        ))
+        
+        # Gráfico de valores nulos
+        st.bar_chart(nulls_percent)
+        
+        if nulls.sum() > 0:
+            st.warning(tr["null_warning"])
+        else:
+            st.success(tr["null_success"])
     
-    report.write(f"{section_titles[language][0]}\n")
-    df.info(buf=report)
-    report.write("\n\n")
+    with tab2:
+        st.write("### " + tr["types_title"])
+        types = df.dtypes.reset_index()
+        types.columns = [tr["col_name"], tr["data_type"]]
+        st.dataframe(types)
+        
+        # Verificar tipos numéricos vs no numéricos
+        numeric_cols = df.select_dtypes(include=['number']).columns
+        non_numeric_cols = df.select_dtypes(exclude=['number']).columns
+        
+        st.write(f"**{tr['numeric_cols']}** {len(numeric_cols)}")
+        st.write(f"**{tr['non_numeric_cols']}** {len(non_numeric_cols)}")
     
-    # Estadísticas descriptivas
-    report.write(f"{section_titles[language][1]}\n")
-    report.write(df.describe().to_string())
-    report.write("\n\n")
+    with tab3:
+        st.write("### " + tr["stats_title"])
+        st.dataframe(df.describe(include='all').T)
     
-    # Datos nulos
-    report.write(f"{section_titles[language][2]}\n")
-    report.write(df.isnull().sum().to_string())
-    report.write("\n\n")
-    
-    # Duplicados
-    report.write(f"{section_titles[language][3]} {df.duplicated().sum()}\n\n")
-    
-    # Tipos de datos
-    report.write(f"{section_titles[language][4]}\n")
-    report.write(df.dtypes.to_string())
-    
-    return report.getvalue()
+    with tab4:
+        st.write("### " + tr["sample_title"])
+        st.dataframe(df.head(10))
 
-# Interfaz principal
-st.title(tr["title"])
-
-# Carga de archivo
-uploaded_file = st.file_uploader(tr["upload"], type=["csv"], help=tr["file_limit"])
-if uploaded_file is not None:
-    df = load_data(uploaded_file)
+# Función para análisis de duplicados
+def show_duplicates(df, tr):
+    st.subheader("🔍 " + tr["duplicates_title"])
     
-    if df is not None:
-        st.success(f"**{tr['file_loaded']}:** {uploaded_file.name}")
-        st.success(f"**{tr['size']}:** {uploaded_file.size / 1024:.2f} KB")
+    total_duplicates = df.duplicated().sum()
+    st.write(f"**{tr['total_duplicates']}** {total_duplicates}")
+    
+    if total_duplicates > 0:
+        duplicate_rows = df[df.duplicated(keep=False)]
+        st.write(f"**{tr['duplicate_rows']}**")
+        st.dataframe(duplicate_rows.sort_values(by=list(df.columns)))
+    else:
+        st.success("✅ " + tr["no_nulls"].replace("null", "duplicate"))
+
+# Función para análisis de outliers
+def show_outliers(df, tr):
+    st.subheader("📈 " + tr["outliers_title"])
+    
+    numeric_cols = df.select_dtypes(include=['number']).columns
+    
+    if len(numeric_cols) == 0:
+        st.warning("No numeric columns found for outlier detection")
+        return
+    
+    selected_col = st.selectbox(tr["outliers_col"], numeric_cols)
+    
+    if df[selected_col].notnull().sum() > 0:
+        # Calcular outliers usando el método IQR
+        Q1 = df[selected_col].quantile(0.25)
+        Q3 = df[selected_col].quantile(0.75)
+        IQR = Q3 - Q1
         
-        # Vista previa rápida
-        st.subheader(tr["quick_preview"])
-        st.dataframe(df.head())
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
         
-        # Análisis seleccionado
-        if analysis_option == tr["null_analysis"]:
-            st.subheader(tr["null_analysis"])
+        outliers = df[(df[selected_col] < lower_bound) | (df[selected_col] > upper_bound)]
+        outliers_count = len(outliers)
+        outliers_percent = (outliers_count / len(df)) * 100
+        
+        st.write(f"**{tr['outliers_count']}** {outliers_count}")
+        st.write(f"**{tr['outliers_percent']}** {outliers_percent:.2f}%")
+        
+        if outliers_count > 0:
+            st.dataframe(outliers)
+        else:
+            st.success("✅ No outliers detected in this column")
+    else:
+        st.warning("Selected column contains only null values")
+
+# Función para tratamiento de nulos
+def null_treatment(df, tr):
+    # Inicialización del estado de sesión
+    if 'df_treated' not in st.session_state:
+        st.session_state.df_treated = df.copy()
+        st.session_state.last_treatment = None
+        st.session_state.show_comparison = False
+
+    # Configuración de la interfaz
+    st.subheader("🛠️ " + tr.get("treatment_title", "Tratamiento de Valores Nulos"))
+
+    # Verificar si ya no hay nulos
+    if st.session_state.df_treated.isnull().sum().sum() == 0:
+        st.success("✅ " + tr.get("no_nulls", "No hay valores nulos en el dataset"))
+        return st.session_state.df_treated
+
+    # Widgets de selección
+    treatment_option = st.radio(
+        tr.get("select_method_label", "Seleccione método de tratamiento"),
+        options=[
+            tr.get("treatment_option1", "Eliminar filas con valores nulos"),
+            tr.get("treatment_option2", "Rellenar con la media (solo numéricos)"),
+            tr.get("treatment_option3", "Rellenar con la mediana (solo numéricos)"),
+            tr.get("treatment_option4", "Rellenar con valor específico")
+        ],
+        key="treatment_option_radio"
+    )
+
+    # Input para valor específico
+    fill_value = None
+    if treatment_option == tr.get("treatment_option4", ""):
+        fill_value = st.text_input(
+            tr.get("fill_value_prompt", "Ingrese el valor de relleno:"),
+            key="fill_value_input"
+        )
+
+    # Botón de aplicación
+    if st.button(tr.get("apply_treatment", "Aplicar tratamiento"), key="apply_treatment_button"):
+        try:
+            # Copia temporal para trabajar
+            temp_df = st.session_state.df_treated.copy()
             
-            # Mostrar datos nulos
-            null_counts = df.isnull().sum()
-            st.write(f"**{tr['null_values']}:**")
-            st.write(null_counts)
-            
-            # Gráfico de valores nulos
-            fig, ax = plt.subplots()
-            sns.heatmap(df.isnull(), cbar=False, ax=ax)
-            st.pyplot(fig)
-            
-            # Opciones de tratamiento
-            st.subheader(tr["treatment_options"])
-            treatment = st.selectbox(tr["treatment_select"], [
-                tr["drop_nulls"],
-                tr["fill_mean"],
-                tr["fill_median"],
-                tr["fill_value"]
-            ])
-            
-            if treatment == tr["fill_value"]:
-                fill_value = st.text_input(tr["fill_input"])
-            
-            if st.button(tr["apply"]):
-                if treatment == tr["drop_nulls"]:
-                    df = df.dropna()
-                elif treatment == tr["fill_mean"]:
-                    numeric_cols = df.select_dtypes(include=[np.number]).columns
-                    df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
-                elif treatment == tr["fill_median"]:
-                    numeric_cols = df.select_dtypes(include=[np.number]).columns
-                    df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
-                elif treatment == tr["fill_value"] and fill_value:
-                    try:
-                        fill_num = float(fill_value)
-                        df = df.fillna(fill_num)
-                    except ValueError:
-                        df = df.fillna(fill_value)
+            if treatment_option == tr.get("treatment_option1", ""):
+                initial_rows = len(temp_df)
+                temp_df = temp_df.dropna()
+                removed_rows = initial_rows - len(temp_df)
+                st.info(f"Se eliminaron {removed_rows} filas con valores nulos")
                 
-                st.success(tr["treatment_success"])
-                st.experimental_rerun()
+            elif treatment_option == tr.get("treatment_option2", ""):
+                numeric_cols = temp_df.select_dtypes(include=['number']).columns
+                for col in numeric_cols:
+                    if temp_df[col].isnull().sum() > 0:
+                        mean_val = temp_df[col].mean()
+                        temp_df[col] = temp_df[col].fillna(mean_val)
+                        
+            elif treatment_option == tr.get("treatment_option3", ""):
+                numeric_cols = temp_df.select_dtypes(include=['number']).columns
+                for col in numeric_cols:
+                    if temp_df[col].isnull().sum() > 0:
+                        median_val = temp_df[col].median()
+                        temp_df[col] = temp_df[col].fillna(median_val)
+                        
+            elif treatment_option == tr.get("treatment_option4", "") and fill_value:
+                try:
+                    fill_value_num = float(fill_value)
+                    temp_df = temp_df.fillna(fill_value_num)
+                except ValueError:
+                    temp_df = temp_df.fillna(fill_value)
+            
+            # Actualizar el estado de sesión solo si el tratamiento fue exitoso
+            st.session_state.df_treated = temp_df
+            st.session_state.last_treatment = treatment_option
+            st.session_state.show_comparison = True
+            
+            st.success("✅ " + tr.get("treatment_success", "Tratamiento aplicado correctamente"))
+            
+        except Exception as e:
+            st.error(f"❌ {tr.get('treatment_error', 'Error al aplicar tratamiento')}: {str(e)}")
+
+    # Mostrar comparación si se aplicó un tratamiento
+    if st.session_state.show_comparison:
+        st.subheader(tr.get("comparison_title", "Comparación de valores nulos"))
+        col1, col2 = st.columns(2)
         
-        elif analysis_option == tr["duplicates_analysis"]:
-            st.subheader(tr["duplicates_analysis"])
-            
-            duplicates = df.duplicated().sum()
-            st.write(f"**{tr['duplicates_found']}:** {duplicates}")
-            
-            if duplicates > 0:
-                st.write(f"**{tr['duplicates_show']}:**")
-                st.dataframe(df[df.duplicated(keep=False)])
-                
-                if st.button(tr["drop_duplicates"]):
-                    df = df.drop_duplicates()
-                    st.success(f"{tr['treatment_success']} - {duplicates} {tr['duplicates_found'].lower()}")
-                    st.experimental_rerun()
+        with col1:
+            st.markdown("**Antes del tratamiento**")
+            st.write(df.isna().sum())
         
-        elif analysis_option == tr["outliers_analysis"]:
-            st.subheader(tr["outliers_analysis"])
-            
-            numeric_cols = df.select_dtypes(include=[np.number]).columns
-            selected_col = st.selectbox(tr["outlier_select"], numeric_cols)
-            
-            # Gráfico de caja
-            fig, ax = plt.subplots()
-            sns.boxplot(x=df[selected_col], ax=ax)
-            st.pyplot(fig)
-            
-            # Opciones de tratamiento
-            st.subheader(tr["outlier_treatment"])
-            treatment = st.selectbox(tr["treatment_select"], [
-                tr["remove_outliers"],
-                tr["cap_outliers"]
-            ])
-            
-            if st.button(tr["apply"]):
-                q1 = df[selected_col].quantile(0.25)
-                q3 = df[selected_col].quantile(0.75)
-                iqr = q3 - q1
-                
-                if treatment == tr["remove_outliers"]:
-                    df = df[(df[selected_col] >= q1 - 1.5*iqr) & (df[selected_col] <= q3 + 1.5*iqr)]
-                else:
-                    lower_bound = q1 - 1.5*iqr
-                    upper_bound = q3 + 1.5*iqr
-                    df[selected_col] = df[selected_col].clip(lower_bound, upper_bound)
-                
-                st.success(tr["treatment_success"])
-                st.experimental_rerun()
+        with col2:
+            st.markdown("**Después del tratamiento**")
+            st.write(st.session_state.df_treated.isna().sum())
+
+    # Botón para resetear
+    if st.button(tr.get("reset_button", "Resetear a datos originales"), key="reset_button"):
+        st.session_state.df_treated = df.copy()
+        st.session_state.show_comparison = False
+        st.experimental_rerun()
+
+    return st.session_state.df_treated
+# Interfaz principal de la aplicación
+def main():
+    # Selector de idioma en el sidebar
+    st.sidebar.title("🌍 Language / Idioma / Langue")
+    language = st.sidebar.radio("", ["Español", "English", "Français"])
+    lang_code = {"Español": "es", "English": "en", "Français": "fr"}[language]
+    tr = load_translations(lang_code)
+    
+    st.title(tr["title"])
+    
+    # Cargar archivo CSV
+    file = st.file_uploader(
+        tr["upload_label"], 
+        type=['csv'],
+        help=tr["upload_help"]
+    )
+    
+    if file is not None:
+        # Mostrar información del archivo
+        st.success(f"{tr['file_loaded']} {file.name}")
+        st.write(f"{tr['file_size']} {file.size / 1024:.2f} KB")
         
-        # Reporte EDA
-        st.subheader(tr["eda_report"])
-        if st.button(tr["generate_report"]):
-            eda_report = generate_eda_report(df, language)
-            st.download_button(
-                tr["download_report"],
-                data=eda_report,
-                file_name=f"eda_report_{language.lower()}.txt",
-                mime="text/plain"
-            )
-            st.text_area(tr["report_preview"], eda_report, height=300)
-else:
-    st.info(tr["upload_prompt"])
+        # Cargar el dataset
+        df = load_dataset(file)
+        
+        if df is not None:
+            # Mostrar vista previa básica
+            st.write("### " + tr["quick_preview"])
+            st.dataframe(df.head(3))
+            
+            # Contenedor para los botones de análisis
+            # SECCIÓN DE BOTONES EN EL SIDEBAR
+            st.sidebar.title("🔧 " + tr["herramientas_analisis"])
+            
+            # Botón de análisis completo
+            if st.sidebar.button("🔍 " + tr["analysis_btn"], help=tr["analysis_help"]):
+                show_analysis(df, tr)
+            
+            # Botón de análisis de duplicados
+            if st.sidebar.button("📝 " + tr["duplicates_btn"]):
+                show_duplicates(df, tr)
+            
+            # Botón de análisis de outliers
+            if st.sidebar.button("📊 " + tr["outliers_btn"]):
+                show_outliers(df, tr)
+            
+            # Botón de tratamiento de nulos
+            if st.button("🛠️ " + tr["null_treatment_btn"]):
+                df = null_treatment(df, tr)
+                st.write("### Dataset después del tratamiento")
+                st.dataframe(df.head())
+            
+            # Opción para descargar el análisis
+            if st.checkbox(tr["export_label"]):
+                nulls = df.isnull().sum().reset_index()
+                nulls.columns = ['Column', 'Null_Values']
+                st.download_button(
+                    label="📥 " + tr["export_btn"],
+                    data=nulls.to_csv(index=False).encode('utf-8'),
+                    file_name='null_analysis.csv',
+                    mime='text/csv'
+                )
+
+if __name__ == "__main__":
+    main()

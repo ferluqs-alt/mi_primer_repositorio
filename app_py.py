@@ -1,73 +1,140 @@
+iimport streamlit as st
 import pandas as pd
+import numpy as np
 import os
-from pathlib import Path
 
-def load_and_preprocess_data(filepath, sample_data=False):
-    """
-    Carga y preprocesa los datos desde un archivo CSV
-    
-    Args:
-        filepath (str): Ruta al archivo CSV
-        sample_data (bool): Si True, carga datos de muestra si el archivo no existe
-    
-    Returns:
-        pd.DataFrame: Datos procesados
-    """
+# Configuración de la página
+st.set_page_config(
+    page_title="Depuración de Dataset",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Título de la aplicación
+st.title("🔍 Análisis y Depuración de Dataset")
+
+# Función para cargar el archivo CSV
+def cargar_dataset(archivo):
     try:
-        # Verificar la ruta del archivo
-        filepath = Path(filepath)
+        # Intentar con diferentes codificaciones comunes
+        codificaciones = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
         
-        if not filepath.exists():
-            if sample_data:
-                st.warning(f"Archivo {filepath} no encontrado. Cargando datos de muestra...")
-                return create_sample_data()
-            raise FileNotFoundError(f"El archivo {filepath} no existe")
-        
-        if filepath.stat().st_size == 0:
-            raise ValueError(f"El archivo {filepath} está vacío")
-        
-        # Intentar leer con diferentes codificaciones comunes
-        encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
-        for encoding in encodings:
+        for codificacion in codificaciones:
             try:
-                data = pd.read_csv(filepath, encoding=encoding)
-                break
+                df = pd.read_csv(archivo, encoding=codificacion)
+                return df
             except UnicodeDecodeError:
                 continue
-        else:
-            raise ValueError("No se pudo decodificar el archivo con las codificaciones comunes")
         
-        # Verificar si se cargaron datos
-        if data.empty:
-            raise ValueError("El archivo CSV no contiene datos válidos")
+        # Si ninguna codificación funcionó
+        st.error("No se pudo leer el archivo con las codificaciones comunes.")
+        return None
         
-        # Preprocesamiento básico
-        data = data.dropna()
-        
-        # Convertir variables categóricas si es necesario
-        # data = pd.get_dummies(data, drop_first=True)
-        
-        return data
-    
     except Exception as e:
-        raise Exception(f"Error al procesar datos: {str(e)}")
+        st.error(f"Error al cargar el archivo: {str(e)}")
+        return None
 
-def create_sample_data():
-    """Crea datos de muestra para propósitos de demostración"""
-    import numpy as np
+# Función para mostrar el análisis de depuración
+def mostrar_depuracion(df):
+    st.subheader("📊 Análisis de Depuración")
     
-    np.random.seed(42)
-    sample_size = 100
+    # Mostrar información básica del dataset
+    st.write("### Información Básica")
+    st.write(f"**Número de filas:** {df.shape[0]}")
+    st.write(f"**Número de columnas:** {df.shape[1]}")
     
-    data = pd.DataFrame({
-        'feature1': np.random.normal(50, 15, sample_size),
-        'feature2': np.random.uniform(0, 100, sample_size),
-        'feature3': np.random.randint(1, 5, sample_size),
-        'price': np.random.normal(200, 50, sample_size)
-    })
+    # Crear pestañas para diferentes análisis
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Valores Nulos", 
+        "Tipos de Datos", 
+        "Estadísticas", 
+        "Muestra de Datos"
+    ])
     
-    # Asegurar que no haya valores negativos en ciertas características
-    data['feature1'] = data['feature1'].clip(lower=0)
-    data['price'] = data['price'].clip(lower=10)
+    with tab1:
+        st.write("### Valores Nulos por Columna")
+        nulos = df.isnull().sum()
+        nulos_percent = (nulos / len(df)) * 100
+        
+        # Crear DataFrame para mostrar
+        nulos_df = pd.DataFrame({
+            'Columna': nulos.index,
+            'Valores Nulos': nulos.values,
+            'Porcentaje (%)': nulos_percent.values.round(2)
+        })
+        
+        st.dataframe(nulos_df.style.highlight_max(
+            axis=0, 
+            subset=['Valores Nulos', 'Porcentaje (%)'],
+            color='salmon'
+        ))
+        
+        # Gráfico de valores nulos
+        st.bar_chart(nulos_percent)
+        
+        if nulos.sum() > 0:
+            st.warning("⚠️ El dataset contiene valores nulos que deben ser tratados")
+        else:
+            st.success("✅ No se encontraron valores nulos en el dataset")
     
-    return data
+    with tab2:
+        st.write("### Tipos de Datos por Columna")
+        tipos = df.dtypes.reset_index()
+        tipos.columns = ['Columna', 'Tipo de Dato']
+        st.dataframe(tipos)
+        
+        # Verificar tipos numéricos vs no numéricos
+        numericas = df.select_dtypes(include=['number']).columns
+        no_numericas = df.select_dtypes(exclude=['number']).columns
+        
+        st.write(f"**Columnas numéricas:** {len(numericas)}")
+        st.write(f"**Columnas no numéricas:** {len(no_numericas)}")
+    
+    with tab3:
+        st.write("### Estadísticas Descriptivas")
+        st.dataframe(df.describe(include='all').T)
+    
+    with tab4:
+        st.write("### Muestra de Datos (Primeras 10 filas)")
+        st.dataframe(df.head(10))
+
+# Interfaz principal de la aplicación
+def main():
+    # Cargar archivo CSV
+    archivo = st.file_uploader(
+        "Sube tu archivo CSV", 
+        type=['csv'],
+        help="Selecciona el dataset que deseas analizar"
+    )
+    
+    if archivo is not None:
+        # Mostrar información del archivo
+        st.success(f"Archivo cargado: {archivo.name}")
+        st.write(f"Tamaño: {archivo.size / 1024:.2f} KB")
+        
+        # Cargar el dataset
+        df = cargar_dataset(archivo)
+        
+        if df is not None:
+            # Mostrar vista previa básica
+            st.write("### Vista Previa Rápida")
+            st.dataframe(df.head(3))
+            
+            # Botón de depuración
+            if st.button("🔍 Ejecutar Análisis de Depuración", 
+                        help="Analiza el dataset para valores nulos y problemas comunes"):
+                mostrar_depuracion(df)
+            
+            # Opción para descargar el análisis
+            if st.checkbox("¿Deseas exportar el análisis de valores nulos?"):
+                nulos = df.isnull().sum().reset_index()
+                nulos.columns = ['Columna', 'Valores_Nulos']
+                st.download_button(
+                    label="📥 Descargar Análisis de Nulos",
+                    data=nulos.to_csv(index=False).encode('utf-8'),
+                    file_name='analisis_nulos.csv',
+                    mime='text/csv'
+                )
+
+if __name__ == "__main__":
+    main()

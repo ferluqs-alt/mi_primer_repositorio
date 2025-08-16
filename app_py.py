@@ -1,91 +1,73 @@
-import streamlit as st
 import pandas as pd
-import numpy as np
-import plotly.express as px
+import os
+from pathlib import Path
 
-st.set_page_config(layout="wide")
-st.title("Análisis de Calidad de Datos")
-
-# Instrucciones para el usuario
-st.info("Sube tu archivo CSV para analizarlo en busca de valores faltantes, datos incorrectos y valores atípicos. Los datos se cargarán en la caché para una mejor experiencia.")
-
-# Carga de archivo
-uploaded_file = st.file_uploader("Elige un archivo CSV", type="csv")
-
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.success("¡Archivo cargado exitosamente!")
-
-    # Almacena el DataFrame en la caché de Streamlit
-    @st.cache_data
-    def get_data(file):
-        return pd.read_csv(file)
-
-    data = get_data(uploaded_file)
-    st.subheader("Vista previa del Dataset")
-    st.dataframe(data.head())
-
-    st.markdown("---")
+def load_and_preprocess_data(filepath, sample_data=False):
+    """
+    Carga y preprocesa los datos desde un archivo CSV
     
-    # 1. Análisis de valores faltantes
-    st.header("1. Valores Faltantes 🕵️‍♂️")
-    missing_data = data.isnull().sum()
-    missing_percentage = (missing_data / len(data)) * 100
-    missing_table = pd.DataFrame({'Total Faltantes': missing_data, 'Porcentaje (%)': missing_percentage})
-    st.table(missing_table[missing_table['Total Faltantes'] > 0])
-
-    if missing_table[missing_table['Total Faltantes'] > 0].empty:
-        st.info("✅ ¡No se encontraron valores faltantes en este dataset!")
-    else:
-        st.warning("⚠️ Se encontraron valores faltantes. Considera imputarlos o eliminarlos.")
-
-    st.markdown("---")
-
-    # 2. Análisis de datos incorrectos (tipos de datos)
-    st.header("2. Datos Incorrectos (Tipos de Datos) 🐛")
-    st.write("Verificando los tipos de datos inferidos para cada columna:")
-    st.dataframe(data.dtypes)
+    Args:
+        filepath (str): Ruta al archivo CSV
+        sample_data (bool): Si True, carga datos de muestra si el archivo no existe
     
-    # Intenta convertir las columnas a tipos numéricos para detectar errores
-    incorrect_types = {}
-    for column in data.columns:
-        # Ignora las columnas que ya son de tipo numérico
-        if pd.api.types.is_numeric_dtype(data[column]):
-            continue
+    Returns:
+        pd.DataFrame: Datos procesados
+    """
+    try:
+        # Verificar la ruta del archivo
+        filepath = Path(filepath)
         
-        # Intenta convertir la columna a tipo numérico y detecta errores
-        try:
-            pd.to_numeric(data[column])
-        except ValueError:
-            # Si la conversión falla, es un dato incorrecto
-            incorrect_types[column] = data[column].dtype
-            
-    if incorrect_types:
-        st.error("❌ ¡Se encontraron datos incorrectos! Algunas columnas tienen valores que no corresponden con su tipo de dato esperado.")
-        st.write("Columnas con posibles datos incorrectos:")
-        st.table(pd.Series(incorrect_types, name="Tipo de Dato Actual"))
-    else:
-        st.info("✅ ¡No se encontraron datos incorrectos en las columnas!")
-
-    st.markdown("---")
-    
-    # 3. Detección de valores atípicos (outliers)
-    st.header("3. Valores Atípicos (Outliers) 📊")
-    st.write("Los gráficos de caja (box plots) son una excelente manera de visualizar y detectar valores atípicos en variables numéricas.")
-    
-    numeric_cols = data.select_dtypes(include=np.number).columns.tolist()
-    if not numeric_cols:
-        st.warning("⚠️ El dataset no contiene columnas numéricas para analizar outliers.")
-    else:
-        st.info(f"Analizando outliers en las columnas numéricas: {', '.join(numeric_cols)}")
+        if not filepath.exists():
+            if sample_data:
+                st.warning(f"Archivo {filepath} no encontrado. Cargando datos de muestra...")
+                return create_sample_data()
+            raise FileNotFoundError(f"El archivo {filepath} no existe")
         
-        for col in numeric_cols:
-            fig = px.box(data, y=col, title=f'Box Plot de {col}', points="all")
-            st.plotly_chart(fig)
-            
-        st.markdown(
-            """
-            * Los puntos fuera de los bigotes en los box plots son los valores atípicos.
-            * Puedes pasar el cursor sobre los puntos para ver sus valores.
-            """
-        )
+        if filepath.stat().st_size == 0:
+            raise ValueError(f"El archivo {filepath} está vacío")
+        
+        # Intentar leer con diferentes codificaciones comunes
+        encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
+        for encoding in encodings:
+            try:
+                data = pd.read_csv(filepath, encoding=encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            raise ValueError("No se pudo decodificar el archivo con las codificaciones comunes")
+        
+        # Verificar si se cargaron datos
+        if data.empty:
+            raise ValueError("El archivo CSV no contiene datos válidos")
+        
+        # Preprocesamiento básico
+        data = data.dropna()
+        
+        # Convertir variables categóricas si es necesario
+        # data = pd.get_dummies(data, drop_first=True)
+        
+        return data
+    
+    except Exception as e:
+        raise Exception(f"Error al procesar datos: {str(e)}")
+
+def create_sample_data():
+    """Crea datos de muestra para propósitos de demostración"""
+    import numpy as np
+    
+    np.random.seed(42)
+    sample_size = 100
+    
+    data = pd.DataFrame({
+        'feature1': np.random.normal(50, 15, sample_size),
+        'feature2': np.random.uniform(0, 100, sample_size),
+        'feature3': np.random.randint(1, 5, sample_size),
+        'price': np.random.normal(200, 50, sample_size)
+    })
+    
+    # Asegurar que no haya valores negativos en ciertas características
+    data['feature1'] = data['feature1'].clip(lower=0)
+    data['price'] = data['price'].clip(lower=10)
+    
+    return data

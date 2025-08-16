@@ -1,9 +1,11 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import os
-import json
 from pathlib import Path
+
+# =============================================
+# CONFIGURACIÓN INICIAL Y TRADUCCIONES
+# =============================================
 
 # Configuración de la página
 st.set_page_config(
@@ -22,7 +24,7 @@ def load_translations(lang):
             "file_loaded": "Archivo cargado:",
             "file_size": "Tamaño:",
             "quick_preview": "Vista Previa Rápida",
-            "analysis_btn": "Analisis datos nulos",
+            "analysis_btn": "Análisis datos nulos",
             "analysis_help": "Analiza el dataset para valores nulos y problemas comunes",
             "export_label": "¿Deseas exportar el análisis de valores nulos?",
             "export_btn": "Descargar Análisis de Nulos",
@@ -57,15 +59,22 @@ def load_translations(lang):
             "outliers_percent": "Porcentaje de outliers:",
             "treatment_title": "Tratamiento de Datos Nulos",
             "treatment_option1": "Eliminar filas con valores nulos",
-            "treatment_option2": "Rellenar con la media ",
-            "treatment_option3": "Rellenar con la mediana",
-            "treatment_option4": "Rellenar con valor específico:",
+            "treatment_option2": "Rellenar con la media (numéricas)",
+            "treatment_option3": "Rellenar con la mediana (numéricas)",
+            "treatment_option4": "Rellenar con moda (categóricas)",
+            "treatment_option5": "Rellenar con valor específico:",
             "apply_treatment": "Aplicar Tratamiento",
             "treatment_success": "Tratamiento aplicado correctamente",
             "no_nulls": "No hay valores nulos para tratar",
+            "no_duplicates": "No hay duplicados para mostrar",
             "herramientas_analisis": "Depuración de dataset",
             "selector_idioma": "Seleccione idioma",
-            "dataset_tras_tratamiento": "Dataset después del tratamiento"
+            "dataset_tras_tratamiento": "Dataset después del tratamiento",
+            "reset_button": "Resetear a datos originales",
+            "comparison_title": "Comparación de valores nulos",
+            "select_method_label": "Seleccione método de tratamiento",
+            "fill_value_prompt": "Ingrese el valor de relleno:",
+            "treatment_error": "Error al aplicar tratamiento"
         },
         "en": {
             "title": "🔍 Dataset Analysis and Cleaning",
@@ -110,14 +119,21 @@ def load_translations(lang):
             "treatment_title": "Null Data Treatment",
             "treatment_option1": "Drop rows with null values",
             "treatment_option2": "Fill with mean (numeric columns)",
-            "treatment_option3": "Fill with mode (categorical columns)",
-            "treatment_option4": "Fill with specific value:",
+            "treatment_option3": "Fill with median (numeric columns)",
+            "treatment_option4": "Fill with mode (categorical columns)",
+            "treatment_option5": "Fill with specific value:",
             "apply_treatment": "Apply Treatment",
             "treatment_success": "Treatment applied successfully",
             "no_nulls": "No null values to treat",
+            "no_duplicates": "No duplicates to show",
             "herramientas_analisis": "Analysis Tools",
             "selector_idioma": "Select language",
-            "dataset_tras_tratamiento": "Dataset after treatment"
+            "dataset_tras_tratamiento": "Dataset after treatment",
+            "reset_button": "Reset to original data",
+            "comparison_title": "Null values comparison",
+            "select_method_label": "Select treatment method",
+            "fill_value_prompt": "Enter fill value:",
+            "treatment_error": "Error applying treatment"
         },
         "fr": {
             "title": "🔍 Analyse et Nettoyage de Données",
@@ -162,33 +178,45 @@ def load_translations(lang):
             "treatment_title": "Traitement des Données Nulles",
             "treatment_option1": "Supprimer les lignes avec valeurs nulles",
             "treatment_option2": "Remplir avec la moyenne (colonnes numériques)",
-            "treatment_option3": "Remplir avec le mode (colonnes catégorielles)",
-            "treatment_option4": "Remplir avec une valeur spécifique:",
+            "treatment_option3": "Remplir avec la médiane (colonnes numériques)",
+            "treatment_option4": "Remplir avec le mode (colonnes catégorielles)",
+            "treatment_option5": "Remplir avec une valeur spécifique:",
             "apply_treatment": "Appliquer le Traitement",
             "treatment_success": "Traitement appliqué avec succès",
             "no_nulls": "Aucune valeur nulle à traiter",
+            "no_duplicates": "Aucun doublon à afficher",
             "herramientas_analisis": "Outils d'Analyse",
             "selector_idioma": "Choisir la langue",
-            "dataset_tras_tratamiento": "Dataset après traitement"
-            
+            "dataset_tras_tratamiento": "Dataset après traitement",
+            "reset_button": "Réinitialiser aux données originales",
+            "comparison_title": "Comparaison des valeurs nulles",
+            "select_method_label": "Sélectionnez la méthode de traitement",
+            "fill_value_prompt": "Entrez la valeur de remplissage:",
+            "treatment_error": "Erreur lors de l'application du traitement"
         }
     }
     return translations.get(lang, translations["en"])
 
-# Función para cargar el archivo CSV
+# =============================================
+# FUNCIONES PARA MANEJO DE DATOS
+# =============================================
+
 def load_dataset(file):
+    """Carga un archivo CSV con manejo de diferentes codificaciones."""
     try:
-        # Intentar con diferentes codificaciones comunes
         encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
         
         for encoding in encodings:
             try:
                 df = pd.read_csv(file, encoding=encoding)
+                # Verificar si el DataFrame está vacío
+                if df.empty:
+                    st.error("The uploaded file is empty.")
+                    return None
                 return df
             except UnicodeDecodeError:
                 continue
         
-        # Si ninguna codificación funcionó
         st.error("Could not read the file with common encodings.")
         return None
         
@@ -196,8 +224,24 @@ def load_dataset(file):
         st.error(f"Error loading file: {str(e)}")
         return None
 
-# Función para mostrar el análisis de depuración
+def get_null_analysis(df):
+    """Genera un análisis de valores nulos."""
+    nulls = df.isnull().sum()
+    nulls_percent = (nulls / len(df)) * 100
+    return nulls, nulls_percent
+
+def get_duplicate_analysis(df):
+    """Analiza y devuelve filas duplicadas."""
+    total_duplicates = df.duplicated().sum()
+    duplicate_rows = df[df.duplicated(keep=False)] if total_duplicates > 0 else None
+    return total_duplicates, duplicate_rows
+
+# =============================================
+# FUNCIONES PARA VISUALIZACIÓN
+# =============================================
+
 def show_analysis(df, tr):
+    """Muestra el análisis completo del dataset."""
     st.subheader("📊 " + tr["basic_info"])
     st.write(f"**{tr['rows']}** {df.shape[0]}")
     st.write(f"**{tr['cols']}** {df.shape[1]}")
@@ -211,68 +255,83 @@ def show_analysis(df, tr):
     ])
     
     with tab1:
-        st.write("### " + tr["null_title"])
-        nulls = df.isnull().sum()
-        nulls_percent = (nulls / len(df)) * 100
-        
-        # Crear DataFrame para mostrar
-        nulls_df = pd.DataFrame({
-            tr["col_name"]: nulls.index,
-            tr["null_count"]: nulls.values,
-            tr["null_percent"]: nulls_percent.values.round(2)
-        })
-        
-        st.dataframe(nulls_df.style.highlight_max(
-            axis=0, 
-            subset=[tr["null_count"], tr["null_percent"]],
-            color='salmon'
-        ))
-        
-        # Gráfico de valores nulos
-        st.bar_chart(nulls_percent)
-        
-        if nulls.sum() > 0:
-            st.warning(tr["null_warning"])
-        else:
-            st.success(tr["null_success"])
+        show_null_analysis(df, tr)
     
     with tab2:
-        st.write("### " + tr["types_title"])
-        types = df.dtypes.reset_index()
-        types.columns = [tr["col_name"], tr["data_type"]]
-        st.dataframe(types)
-        
-        # Verificar tipos numéricos vs no numéricos
-        numeric_cols = df.select_dtypes(include=['number']).columns
-        non_numeric_cols = df.select_dtypes(exclude=['number']).columns
-        
-        st.write(f"**{tr['numeric_cols']}** {len(numeric_cols)}")
-        st.write(f"**{tr['non_numeric_cols']}** {len(non_numeric_cols)}")
+        show_data_types(df, tr)
     
     with tab3:
-        st.write("### " + tr["stats_title"])
-        st.dataframe(df.describe(include='all').T)
+        show_statistics(df, tr)
     
     with tab4:
-        st.write("### " + tr["sample_title"])
-        st.dataframe(df.head(10))
+        show_data_sample(df, tr)
 
-# Función para análisis de duplicados
+def show_null_analysis(df, tr):
+    """Muestra el análisis de valores nulos."""
+    st.write("### " + tr["null_title"])
+    nulls, nulls_percent = get_null_analysis(df)
+    
+    nulls_df = pd.DataFrame({
+        tr["col_name"]: nulls.index,
+        tr["null_count"]: nulls.values,
+        tr["null_percent"]: nulls_percent.values.round(2)
+    })
+    
+    st.dataframe(nulls_df.style.highlight_max(
+        axis=0, 
+        subset=[tr["null_count"], tr["null_percent"]],
+        color='salmon'
+    ))
+    
+    st.bar_chart(nulls_percent)
+    
+    if nulls.sum() > 0:
+        st.warning(tr["null_warning"])
+    else:
+        st.success(tr["null_success"])
+
+def show_data_types(df, tr):
+    """Muestra los tipos de datos del dataset."""
+    st.write("### " + tr["types_title"])
+    types = df.dtypes.reset_index()
+    types.columns = [tr["col_name"], tr["data_type"]]
+    st.dataframe(types)
+    
+    numeric_cols = df.select_dtypes(include=['number']).columns
+    non_numeric_cols = df.select_dtypes(exclude=['number']).columns
+    
+    st.write(f"**{tr['numeric_cols']}** {len(numeric_cols)}")
+    st.write(f"**{tr['non_numeric_cols']}** {len(non_numeric_cols)}")
+
+def show_statistics(df, tr):
+    """Muestra estadísticas descriptivas."""
+    st.write("### " + tr["stats_title"])
+    try:
+        stats = df.describe(include='all').T
+        st.dataframe(stats)
+    except Exception as e:
+        st.error(f"Error calculating statistics: {str(e)}")
+
+def show_data_sample(df, tr):
+    """Muestra una muestra de los datos."""
+    st.write("### " + tr["sample_title"])
+    st.dataframe(df.head(10))
+
 def show_duplicates(df, tr):
+    """Muestra el análisis de duplicados."""
     st.subheader("🔍 " + tr["duplicates_title"])
     
-    total_duplicates = df.duplicated().sum()
+    total_duplicates, duplicate_rows = get_duplicate_analysis(df)
     st.write(f"**{tr['total_duplicates']}** {total_duplicates}")
     
     if total_duplicates > 0:
-        duplicate_rows = df[df.duplicated(keep=False)]
         st.write(f"**{tr['duplicate_rows']}**")
         st.dataframe(duplicate_rows.sort_values(by=list(df.columns)))
     else:
-        st.success("✅ " + tr["no_nulls"].replace("null", "duplicate"))
+        st.success("✅ " + tr["no_duplicates"])
 
-# Función para análisis de outliers
 def show_outliers(df, tr):
+    """Muestra el análisis de outliers."""
     st.subheader("📈 " + tr["outliers_title"])
     
     numeric_cols = df.select_dtypes(include=['number']).columns
@@ -284,7 +343,6 @@ def show_outliers(df, tr):
     selected_col = st.selectbox(tr["outliers_col"], numeric_cols)
     
     if df[selected_col].notnull().sum() > 0:
-        # Calcular outliers usando el método IQR
         Q1 = df[selected_col].quantile(0.25)
         Q3 = df[selected_col].quantile(0.75)
         IQR = Q3 - Q1
@@ -306,110 +364,126 @@ def show_outliers(df, tr):
     else:
         st.warning("Selected column contains only null values")
 
-# Función para tratamiento de nulos
+# =============================================
+# TRATAMIENTO DE VALORES NULOS
+# =============================================
+
 def null_treatment(df, tr):
+    """Realiza el tratamiento de valores nulos."""
     # Inicialización del estado de sesión
     if 'df_treated' not in st.session_state:
         st.session_state.df_treated = df.copy()
         st.session_state.last_treatment = None
         st.session_state.show_comparison = False
 
-    # Configuración de la interfaz
-    st.subheader("🛠️ " + tr.get("treatment_title", "Tratamiento de Valores Nulos"))
+    st.subheader("🛠️ " + tr["treatment_title"])
 
     # Verificar si ya no hay nulos
     if st.session_state.df_treated.isnull().sum().sum() == 0:
-        st.success("✅ " + tr.get("no_nulls", "No hay valores nulos en el dataset"))
+        st.success("✅ " + tr["no_nulls"])
         return st.session_state.df_treated
 
     # Widgets de selección
     treatment_option = st.radio(
-        tr.get("select_method_label", "Seleccione método de tratamiento"),
+        tr["select_method_label"],
         options=[
-            tr.get("treatment_option1", "Eliminar filas con valores nulos"),
-            tr.get("treatment_option2", "Rellenar con la media (solo numéricos)"),
-            tr.get("treatment_option3", "Rellenar con la mediana (solo numéricos)"),
-            tr.get("treatment_option4", "Rellenar con valor específico")
+            tr["treatment_option1"],
+            tr["treatment_option2"],
+            tr["treatment_option3"],
+            tr["treatment_option4"],
+            tr["treatment_option5"]
         ],
         key="treatment_option_radio"
     )
 
     # Input para valor específico
     fill_value = None
-    if treatment_option == tr.get("treatment_option4", ""):
+    if treatment_option == tr["treatment_option5"]:
         fill_value = st.text_input(
-            tr.get("fill_value_prompt", "Ingrese el valor de relleno:"),
+            tr["fill_value_prompt"],
             key="fill_value_input"
         )
 
     # Botón de aplicación
-    if st.button(tr.get("apply_treatment", "Aplicar tratamiento"), key="apply_treatment_button"):
+    if st.button(tr["apply_treatment"], key="apply_treatment_button"):
         try:
-            # Copia temporal para trabajar
             temp_df = st.session_state.df_treated.copy()
             
-            if treatment_option == tr.get("treatment_option1", ""):
+            if treatment_option == tr["treatment_option1"]:
                 initial_rows = len(temp_df)
                 temp_df = temp_df.dropna()
                 removed_rows = initial_rows - len(temp_df)
-                st.info(f"Se eliminaron {removed_rows} filas con valores nulos")
+                st.info(f"Removed {removed_rows} rows with null values")
                 
-            elif treatment_option == tr.get("treatment_option2", ""):
+            elif treatment_option == tr["treatment_option2"]:
                 numeric_cols = temp_df.select_dtypes(include=['number']).columns
                 for col in numeric_cols:
                     if temp_df[col].isnull().sum() > 0:
                         mean_val = temp_df[col].mean()
                         temp_df[col] = temp_df[col].fillna(mean_val)
                         
-            elif treatment_option == tr.get("treatment_option3", ""):
+            elif treatment_option == tr["treatment_option3"]:
                 numeric_cols = temp_df.select_dtypes(include=['number']).columns
                 for col in numeric_cols:
                     if temp_df[col].isnull().sum() > 0:
                         median_val = temp_df[col].median()
                         temp_df[col] = temp_df[col].fillna(median_val)
                         
-            elif treatment_option == tr.get("treatment_option4", "") and fill_value:
+            elif treatment_option == tr["treatment_option4"]:
+                non_numeric_cols = temp_df.select_dtypes(exclude=['number']).columns
+                for col in non_numeric_cols:
+                    if temp_df[col].isnull().sum() > 0:
+                        mode_val = temp_df[col].mode()[0]
+                        temp_df[col] = temp_df[col].fillna(mode_val)
+            
+            elif treatment_option == tr["treatment_option5"] and fill_value:
                 try:
+                    # Intentar convertir a número
                     fill_value_num = float(fill_value)
                     temp_df = temp_df.fillna(fill_value_num)
                 except ValueError:
+                    # Si falla, usar como string
                     temp_df = temp_df.fillna(fill_value)
             
-            # Actualizar el estado de sesión solo si el tratamiento fue exitoso
+            # Actualizar el estado de sesión
             st.session_state.df_treated = temp_df
             st.session_state.last_treatment = treatment_option
             st.session_state.show_comparison = True
             
-            st.success("✅ " + tr.get("treatment_success", "Tratamiento aplicado correctamente"))
+            st.success("✅ " + tr["treatment_success"])
             
         except Exception as e:
-            st.error(f"❌ {tr.get('treatment_error', 'Error al aplicar tratamiento')}: {str(e)}")
+            st.error(f"❌ {tr['treatment_error']}: {str(e)}")
 
     # Mostrar comparación si se aplicó un tratamiento
     if st.session_state.show_comparison:
-        st.subheader(tr.get("comparison_title", "Comparación de valores nulos"))
+        st.subheader(tr["comparison_title"])
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("**Antes del tratamiento**")
+            st.markdown("**Before treatment**")
             st.write(df.isna().sum())
         
         with col2:
-            st.markdown("**Después del tratamiento**")
+            st.markdown("**After treatment**")
             st.write(st.session_state.df_treated.isna().sum())
 
     # Botón para resetear
-    if st.button(tr.get("reset_button", "Resetear a datos originales"), key="reset_button"):
+    if st.button(tr["reset_button"], key="reset_button"):
         st.session_state.df_treated = df.copy()
         st.session_state.show_comparison = False
         st.experimental_rerun()
 
     return st.session_state.df_treated
-# Interfaz principal de la aplicación
+
+# =============================================
+# INTERFAZ PRINCIPAL
+# =============================================
+
 def main():
-    # Selector de idioma en el sidebar
-    st.sidebar.title("🌍 Language / Idioma / Langue")
-    language = st.sidebar.radio("", ["Español", "English", "Français"])
+    # Selector de idioma
+    st.sidebar.title("🌍 " + tr["selector_idioma"])
+    language = st.sidebar.radio("", ["Español", "English", "Français"], label_visibility="collapsed")
     lang_code = {"Español": "es", "English": "en", "Français": "fr"}[language]
     tr = load_translations(lang_code)
     
@@ -436,7 +510,6 @@ def main():
             st.dataframe(df.head(3))
             
             # Contenedor para los botones de análisis
-            # SECCIÓN DE BOTONES EN EL SIDEBAR
             st.sidebar.title("🔧 " + tr["herramientas_analisis"])
             
             # Botón de análisis completo
@@ -452,16 +525,16 @@ def main():
                 show_outliers(df, tr)
             
             # Botón de tratamiento de nulos
-            if st.button("🛠️ " + tr["null_treatment_btn"]):
+            if st.sidebar.button("🛠️ " + tr["null_treatment_btn"]):
                 df = null_treatment(df, tr)
-                st.write("### Dataset después del tratamiento")
+                st.write("### " + tr["dataset_tras_tratamiento"])
                 st.dataframe(df.head())
             
             # Opción para descargar el análisis
-            if st.checkbox(tr["export_label"]):
+            if st.sidebar.checkbox(tr["export_label"]):
                 nulls = df.isnull().sum().reset_index()
                 nulls.columns = ['Column', 'Null_Values']
-                st.download_button(
+                st.sidebar.download_button(
                     label="📥 " + tr["export_btn"],
                     data=nulls.to_csv(index=False).encode('utf-8'),
                     file_name='null_analysis.csv',

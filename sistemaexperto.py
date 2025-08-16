@@ -521,12 +521,12 @@ print("✅ Dependencias instaladas correctamente!")
 #         st.markdown("#### 🎯 Misiones Especiales de Prevención")
 #
 
-!ls
+#!ls
 
-!npm install -g localtunnel
+#!npm install -g localtunnel
 
-!streamlit run app.py & npx localtunnel --port 8501
+#!streamlit run app.py & npx localtunnel --port 8501
 
-!curl ipecho.net/plain
+#!curl ipecho.net/plain
 
-!ls
+#!ls

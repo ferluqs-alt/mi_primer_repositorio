@@ -783,32 +783,27 @@ def null_treatment(df, tr):
                         temp_df[col] = temp_df[col].fillna(mode_val)
             
             elif treatment_option == tr["treatment_option5"] and fill_value:
-                # Manejar el relleno con valor específico
                 try:
                     fill_value_num = float(fill_value)
                     temp_df = temp_df.fillna(fill_value_num)
                 except ValueError:
                     temp_df = temp_df.fillna(fill_value)
             
-            # Actualizar el estado de sesión
             st.session_state.df_treated = temp_df
             st.session_state.last_treatment = treatment_option
             st.session_state.show_comparison = True
-            
             st.success("✅ " + tr["treatment_success"])
             
         except Exception as e:
             st.error(f"❌ {tr['treatment_error']}: {str(e)}")
 
-    # Mostrar comparación si se aplicó un tratamiento
+    # Mostrar comparación
     if st.session_state.show_comparison:
         st.subheader(tr["comparison_title"])
         col1, col2 = st.columns(2)
-        
         with col1:
             st.markdown("**Before treatment**")
             st.write(df.isna().sum())
-        
         with col2:
             st.markdown("**After treatment**")
             st.write(st.session_state.df_treated.isna().sum())

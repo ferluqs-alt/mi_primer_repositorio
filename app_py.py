@@ -10,8 +10,8 @@ st.title("ESTIMADOR DE PRECIO DE VIVIENDAS")
 with st.sidebar:
     st.header("Opciones")
     uploaded_file = st.file_uploader("Cargar archivo", type=["csv", "xlsx"])
-    if st.button("Análisis Exploratorio"):
-        st.write("Realizando análisis exploratorio...")
+    if st.button("Prepar datos"):
+        st.write("Realizando preparación de datos...")
     if st.button("Normalización"):
         st.write("Aplicando normalización...")
     if st.button("Otros Análisis"):

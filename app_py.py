@@ -310,6 +310,24 @@ def show_outliers(df, tr):
 
 # Función para tratamiento de nulos
 def null_treatment(df, tr):
+    # Verificar claves esenciales primero
+    required_keys = {
+        'treatment_title': "Tratamiento de Valores Nulos",
+        'no_nulls': "No hay valores nulos en el dataset",
+        'select_method_label': "Seleccione método de tratamiento",
+        'treatment_option1': "Eliminar filas con valores nulos",
+        'treatment_option2': "Rellenar con la media (solo numéricos)",
+        'treatment_option3': "Rellenar con la mediana (solo numéricos)",
+        'treatment_option4': "Rellenar con valor específico",
+        'fill_value_prompt': "Ingrese el valor de relleno:",
+        'apply_treatment': "Aplicar tratamiento",
+        'treatment_success': "Tratamiento aplicado correctamente"
+    }
+    
+    # Completar el diccionario tr con valores por defecto si faltan
+    for key, default_value in required_keys.items():
+        tr[key] = tr.get(key, default_value)
+    
     st.subheader("🛠️ " + tr["treatment_title"])
     
     if df.isnull().sum().sum() == 0:
@@ -333,43 +351,44 @@ def null_treatment(df, tr):
     if st.button(tr["apply_treatment"]):
         df_treated = df.copy()
         
-        if treatment_option == tr["treatment_option1"]:
-            # Eliminar filas con nulos
-            initial_rows = len(df_treated)
-            df_treated = df_treated.dropna()
-            removed_rows = initial_rows - len(df_treated)
-            st.info(f"Se eliminaron {removed_rows} filas con valores nulos")
+        try:
+            if treatment_option == tr["treatment_option1"]:
+                initial_rows = len(df_treated)
+                df_treated = df_treated.dropna()
+                removed_rows = initial_rows - len(df_treated)
+                st.info(f"Se eliminaron {removed_rows} filas con valores nulos")
+                
+            elif treatment_option == tr["treatment_option2"]:
+                numeric_cols = df_treated.select_dtypes(include=['number']).columns
+                for col in numeric_cols:
+                    if df_treated[col].isnull().sum() > 0:
+                        mean_val = df_treated[col].mean()
+                        df_treated[col] = df_treated[col].fillna(mean_val)
+                        st.write(f"Columna {col}: rellenados {df_treated[col].isnull().sum()} nulos con media {mean_val:.2f}")
+                
+            elif treatment_option == tr["treatment_option3"]:
+                numeric_cols = df_treated.select_dtypes(include=['number']).columns
+                for col in numeric_cols:
+                    if df_treated[col].isnull().sum() > 0:
+                        median_val = df_treated[col].median()
+                        df_treated[col] = df_treated[col].fillna(median_val)
+                        st.write(f"Columna {col}: rellenados {df_treated[col].isnull().sum()} nulos con mediana {median_val:.2f}")
+                
+            elif treatment_option == tr["treatment_option4"] and fill_value:
+                try:
+                    fill_value_num = float(fill_value)
+                    df_treated = df_treated.fillna(fill_value_num)
+                    st.write(f"Todos los nulos rellenados con valor: {fill_value_num}")
+                except ValueError:
+                    df_treated = df_treated.fillna(fill_value)
+                    st.write(f"Todos los nulos rellenados con valor: {fill_value}")
             
-        elif treatment_option == tr["treatment_option2"]:
-            # Rellenar con media
-            numeric_cols = df_treated.select_dtypes(include=['number']).columns
-            for col in numeric_cols:
-                if df_treated[col].isnull().sum() > 0:
-                    mean_val = df_treated[col].mean()
-                    df_treated[col] = df_treated[col].fillna(mean_val)
-                    st.write(f"Columna {col}: rellenados {df_treated[col].isnull().sum()} nulos con media {mean_val:.2f}")
-            
-        elif treatment_option == tr["treatment_option3"]:
-            # Rellenar con mediana
-            numeric_cols = df_treated.select_dtypes(include=['number']).columns
-            for col in numeric_cols:
-                if df_treated[col].isnull().sum() > 0:
-                    median_val = df_treated[col].median()
-                    df_treated[col] = df_treated[col].fillna(median_val)
-                    st.write(f"Columna {col}: rellenados {df_treated[col].isnull().sum()} nulos con mediana {median_val:.2f}")
-            
-        elif treatment_option == tr["treatment_option4"] and fill_value:
-            # Rellenar con valor específico
-            try:
-                fill_value_num = float(fill_value)
-                df_treated = df_treated.fillna(fill_value_num)
-                st.write(f"Todos los nulos rellenados con valor: {fill_value_num}")
-            except ValueError:
-                df_treated = df_treated.fillna(fill_value)
-                st.write(f"Todos los nulos rellenados con valor: {fill_value}")
+            st.success("✅ " + tr["treatment_success"])
+            return df_treated
         
-        st.success("✅ " + tr["treatment_success"])
-        return df_treated
+        except Exception as e:
+            st.error(f"Error al aplicar tratamiento: {str(e)}")
+            return df
     
     return df
 # Interfaz principal de la aplicación

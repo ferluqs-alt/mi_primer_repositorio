@@ -317,7 +317,7 @@ def null_treatment(df, tr):
         return df
     
     treatment_option = st.radio(
-        "Select treatment method:",
+        tr["select_method_label"],
         [
             tr["treatment_option1"],
             tr["treatment_option2"],
@@ -326,35 +326,52 @@ def null_treatment(df, tr):
         ]
     )
     
+    fill_value = None
     if treatment_option == tr["treatment_option4"]:
-        fill_value = st.text_input("Enter the value to fill:")
+        fill_value = st.text_input(tr["fill_value_prompt"])
     
     if st.button(tr["apply_treatment"]):
         df_treated = df.copy()
         
         if treatment_option == tr["treatment_option1"]:
+            # Eliminar filas con nulos
+            initial_rows = len(df_treated)
             df_treated = df_treated.dropna()
+            removed_rows = initial_rows - len(df_treated)
+            st.info(f"Se eliminaron {removed_rows} filas con valores nulos")
+            
         elif treatment_option == tr["treatment_option2"]:
+            # Rellenar con media
             numeric_cols = df_treated.select_dtypes(include=['number']).columns
             for col in numeric_cols:
-                df_treated[col] = df_treated[col].fillna(df_treated[col].mean())
+                if df_treated[col].isnull().sum() > 0:
+                    mean_val = df_treated[col].mean()
+                    df_treated[col] = df_treated[col].fillna(mean_val)
+                    st.write(f"Columna {col}: rellenados {df_treated[col].isnull().sum()} nulos con media {mean_val:.2f}")
+            
         elif treatment_option == tr["treatment_option3"]:
+            # Rellenar con mediana
             numeric_cols = df_treated.select_dtypes(include=['number']).columns
             for col in numeric_cols:
-                df_treated[col] = df_treated[col].fillna(df_treated[col].median())
+                if df_treated[col].isnull().sum() > 0:
+                    median_val = df_treated[col].median()
+                    df_treated[col] = df_treated[col].fillna(median_val)
+                    st.write(f"Columna {col}: rellenados {df_treated[col].isnull().sum()} nulos con mediana {median_val:.2f}")
+            
         elif treatment_option == tr["treatment_option4"] and fill_value:
+            # Rellenar con valor específico
             try:
-                # Intentar convertir a número si es posible
                 fill_value_num = float(fill_value)
                 df_treated = df_treated.fillna(fill_value_num)
+                st.write(f"Todos los nulos rellenados con valor: {fill_value_num}")
             except ValueError:
                 df_treated = df_treated.fillna(fill_value)
+                st.write(f"Todos los nulos rellenados con valor: {fill_value}")
         
         st.success("✅ " + tr["treatment_success"])
         return df_treated
     
     return df
-
 # Interfaz principal de la aplicación
 def main():
     # Selector de idioma en el sidebar

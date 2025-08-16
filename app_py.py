@@ -18,7 +18,7 @@ st.set_page_config(
 def load_translations(lang):
     translations = {
         "es": {
-            "title": "🔍 Análisis y Depuración de Dataset",
+            "title": "🔍 ESTIMADOR DE PRECIOS DE VIVIENDAS",
             "upload_label": "Sube tu archivo CSV",
             "upload_help": "Selecciona el dataset que deseas analizar",
             "file_loaded": "Archivo cargado:",

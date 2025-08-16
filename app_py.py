@@ -752,9 +752,9 @@ def null_treatment(df, tr):
 
     # Botón de aplicación
     if st.button(tr["apply_treatment"], key="apply_treatment_button"):
+        temp_df = st.session_state.df_treated.copy()
+        
         try:
-            temp_df = st.session_state.df_treated.copy()
-            
             if treatment_option == tr["treatment_option1"]:
                 initial_rows = len(temp_df)
                 temp_df = temp_df.dropna()
@@ -783,12 +783,11 @@ def null_treatment(df, tr):
                         temp_df[col] = temp_df[col].fillna(mode_val)
             
             elif treatment_option == tr["treatment_option5"] and fill_value:
+                # Manejar el relleno con valor específico
                 try:
-                    # Intentar convertir a número
                     fill_value_num = float(fill_value)
                     temp_df = temp_df.fillna(fill_value_num)
                 except ValueError:
-                    # Si falla, usar como string
                     temp_df = temp_df.fillna(fill_value)
             
             # Actualizar el estado de sesión

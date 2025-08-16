@@ -24,7 +24,7 @@ def load_translations(lang):
             "file_loaded": "Archivo cargado:",
             "file_size": "Tamaño:",
             "quick_preview": "Vista Previa Rápida",
-            "analysis_btn": "Ejecutar Análisis de Depuración",
+            "analysis_btn": "Analisis datos nulos",
             "analysis_help": "Analiza el dataset para valores nulos y problemas comunes",
             "export_label": "¿Deseas exportar el análisis de valores nulos?",
             "export_btn": "Descargar Análisis de Nulos",
@@ -65,7 +65,7 @@ def load_translations(lang):
             "apply_treatment": "Aplicar Tratamiento",
             "treatment_success": "Tratamiento aplicado correctamente",
             "no_nulls": "No hay valores nulos para tratar",
-            "herramientas_analisis": "Herramientas de Análisis",
+            "herramientas_analisis": "Depuración de dataset",
             "selector_idioma": "Seleccione idioma",
             "dataset_tras_tratamiento": "Dataset después del tratamiento"
         },

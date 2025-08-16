@@ -64,7 +64,10 @@ def load_translations(lang):
             "treatment_option4": "Rellenar con valor específico:",
             "apply_treatment": "Aplicar Tratamiento",
             "treatment_success": "Tratamiento aplicado correctamente",
-            "no_nulls": "No hay valores nulos para tratar"
+            "no_nulls": "No hay valores nulos para tratar",
+            "herramientas_analisis": "Herramientas de Análisis",
+            "selector_idioma": "Seleccione idioma",
+            "dataset_tras_tratamiento": "Dataset después del tratamiento"
         },
         "en": {
             "title": "🔍 Dataset Analysis and Cleaning",
@@ -113,7 +116,10 @@ def load_translations(lang):
             "treatment_option4": "Fill with specific value:",
             "apply_treatment": "Apply Treatment",
             "treatment_success": "Treatment applied successfully",
-            "no_nulls": "No null values to treat"
+            "no_nulls": "No null values to treat",
+            "herramientas_analisis": "Analysis Tools",
+            "selector_idioma": "Select language",
+            "dataset_tras_tratamiento": "Dataset after treatment"
         },
         "fr": {
             "title": "🔍 Analyse et Nettoyage de Données",
@@ -162,7 +168,11 @@ def load_translations(lang):
             "treatment_option4": "Remplir avec une valeur spécifique:",
             "apply_treatment": "Appliquer le Traitement",
             "treatment_success": "Traitement appliqué avec succès",
-            "no_nulls": "Aucune valeur nulle à traiter"
+            "no_nulls": "Aucune valeur nulle à traiter",
+            "herramientas_analisis": "Outils d'Analyse",
+            "selector_idioma": "Choisir la langue",
+            "dataset_tras_tratamiento": "Dataset après traitement"
+            
         }
     }
     return translations.get(lang, translations["en"])

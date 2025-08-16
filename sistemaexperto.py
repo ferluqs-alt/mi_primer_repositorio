@@ -8,8 +8,8 @@ Original file is located at
 """
 
 ###############INSTALACIÓN DE BIBLIOTECA STREAM##########
-!pip install streamlit -q
-!pip install pyngrok
+#!pip install streamlit -q
+#!pip install pyngrok
 #########################################################
 
 # %% [markdown]

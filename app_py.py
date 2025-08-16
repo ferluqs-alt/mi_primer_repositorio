@@ -1,10 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import r2_score, mean_squared_error
-from io import BytesIO
 from pathlib import Path
 
 # =============================================
@@ -13,7 +9,7 @@ from pathlib import Path
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Advanced Dataset Analysis",
+    page_title="Dataset Analysis",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -22,19 +18,19 @@ st.set_page_config(
 def load_translations(lang):
     translations = {
         "es": {
-            "title": "🔍 ANALISIS AVANZADO DE DATOS",
+            "title": "🔍 ESTIMADOR DE PRECIOS DE VIVIENDAS",
             "upload_label": "Sube tu archivo CSV",
             "upload_help": "Selecciona el dataset que deseas analizar",
             "file_loaded": "Archivo cargado:",
             "file_size": "Tamaño:",
             "quick_preview": "Vista Previa Rápida",
-            "analysis_btn": "Análisis Exploratorio (EDA)",
-            "analysis_help": "Analiza el dataset para valores nulos, correlaciones y problemas comunes",
-            "export_label": "¿Deseas exportar el análisis?",
-            "export_btn": "Descargar Reporte EDA",
+            "analysis_btn": "Análisis datos nulos",
+            "analysis_help": "Analiza el dataset para valores nulos y problemas comunes",
+            "export_label": "¿Deseas exportar el análisis de valores nulos?",
+            "export_btn": "Descargar Análisis de Nulos",
             "duplicates_btn": "Análisis de Duplicados",
             "outliers_btn": "Análisis de Outliers",
-            "null_treatment_btn": "Tratamiento de Datos",
+            "null_treatment_btn": "Tratamiento de Datos Nulos",
             "basic_info": "Información Básica",
             "rows": "Número de filas:",
             "cols": "Número de columnas:",
@@ -42,9 +38,6 @@ def load_translations(lang):
             "types_tab": "Tipos de Datos",
             "stats_tab": "Estadísticas",
             "sample_tab": "Muestra de Datos",
-            "eda_tab": "Análisis Exploratorio",
-            "correlation_tab": "Correlaciones",
-            "visualization_tab": "Visualización",
             "null_title": "Valores Nulos por Columna",
             "col_name": "Columna",
             "null_count": "Valores Nulos",
@@ -64,7 +57,7 @@ def load_translations(lang):
             "outliers_col": "Columna:",
             "outliers_count": "Outliers detectados:",
             "outliers_percent": "Porcentaje de outliers:",
-            "treatment_title": "Tratamiento de Datos",
+            "treatment_title": "Tratamiento de Datos Nulos",
             "treatment_option1": "Eliminar filas con valores nulos",
             "treatment_option2": "Rellenar con la media (numéricas)",
             "treatment_option3": "Rellenar con la mediana (numéricas)",
@@ -74,65 +67,29 @@ def load_translations(lang):
             "treatment_success": "Tratamiento aplicado correctamente",
             "no_nulls": "No hay valores nulos para tratar",
             "no_duplicates": "No hay duplicados para mostrar",
-            "herramientas_analisis": "Herramientas de Análisis",
+            "herramientas_analisis": "Depuración de dataset",
             "selector_idioma": "Seleccione idioma",
             "dataset_tras_tratamiento": "Dataset después del tratamiento",
             "reset_button": "Resetear a datos originales",
             "comparison_title": "Comparación de valores nulos",
             "select_method_label": "Seleccione método de tratamiento",
             "fill_value_prompt": "Ingrese el valor de relleno:",
-            "treatment_error": "Error al aplicar tratamiento",
-            "eda_title": "Análisis Exploratorio de Datos (EDA)",
-            "missing_data_title": "Datos Faltantes",
-            "data_quality_title": "Calidad de los Datos",
-            "correlation_title": "Análisis de Correlación",
-            "correlation_matrix": "Matriz de Correlación",
-            "top_correlations": "Top Correlaciones",
-            "r2_score": "Coeficiente de Determinación (R²)",
-            "mse": "Error Cuadrático Medio (MSE)",
-            "rmse": "Raíz del Error Cuadrático Medio (RMSE)",
-            "visualization_title": "Visualización de Datos",
-            "histogram_btn": "Histograma",
-            "boxplot_btn": "Diagrama de Caja",
-            "scatter_btn": "Diagrama de Dispersión",
-            "select_column": "Seleccione columna:",
-            "select_columns": "Seleccione columnas:",
-            "select_x": "Variable X:",
-            "select_y": "Variable Y:",
-            "no_numeric_cols": "No hay columnas numéricas para visualizar",
-            "report_generated": "Reporte EDA generado con éxito",
-            "download_report": "Descargar Reporte Completo",
-            "data_quality_issue": "Problema de calidad de datos detectado",
-            "high_missing": "Alto porcentaje de valores faltantes (>30%)",
-            "potential_outliers": "Potenciales outliers detectados",
-            "inconsistent_dates": "Fechas inconsistentes detectadas",
-            "text_analysis": "Análisis de Texto",
-            "unique_values": "Valores únicos:",
-            "most_common": "Valores más comunes:",
-            "data_cleaning": "Limpieza de Datos",
-            "apply_cleaning": "Aplicar Limpieza",
-            "cleaning_options": {
-                "trim_spaces": "Eliminar espacios en blanco",
-                "lowercase": "Convertir a minúsculas",
-                "remove_special": "Eliminar caracteres especiales",
-                "date_format": "Estandarizar formato de fecha"
-            },
-            "cleaning_success": "Limpieza aplicada correctamente"
+            "treatment_error": "Error al aplicar tratamiento"
         },
         "en": {
-            "title": "🔍 Advanced Data Analysis",
+            "title": "🔍 Dataset Analysis and Cleaning",
             "upload_label": "Upload your CSV file",
             "upload_help": "Select the dataset you want to analyze",
             "file_loaded": "File loaded:",
             "file_size": "Size:",
             "quick_preview": "Quick Preview",
-            "analysis_btn": "Exploratory Analysis (EDA)",
-            "analysis_help": "Analyze the dataset for null values, correlations and common issues",
-            "export_label": "Do you want to export the analysis?",
-            "export_btn": "Download EDA Report",
+            "analysis_btn": "Run Data Analysis",
+            "analysis_help": "Analyze the dataset for null values and common issues",
+            "export_label": "Do you want to export the null analysis?",
+            "export_btn": "Download Null Analysis",
             "duplicates_btn": "Duplicate Analysis",
             "outliers_btn": "Outliers Analysis",
-            "null_treatment_btn": "Data Treatment",
+            "null_treatment_btn": "Null Data Treatment",
             "basic_info": "Basic Information",
             "rows": "Number of rows:",
             "cols": "Number of columns:",
@@ -140,9 +97,6 @@ def load_translations(lang):
             "types_tab": "Data Types",
             "stats_tab": "Statistics",
             "sample_tab": "Data Sample",
-            "eda_tab": "Exploratory Analysis",
-            "correlation_tab": "Correlations",
-            "visualization_tab": "Visualization",
             "null_title": "Null Values by Column",
             "col_name": "Column",
             "null_count": "Null Values",
@@ -162,7 +116,7 @@ def load_translations(lang):
             "outliers_col": "Column:",
             "outliers_count": "Outliers detected:",
             "outliers_percent": "Outliers percentage:",
-            "treatment_title": "Data Treatment",
+            "treatment_title": "Null Data Treatment",
             "treatment_option1": "Drop rows with null values",
             "treatment_option2": "Fill with mean (numeric columns)",
             "treatment_option3": "Fill with median (numeric columns)",
@@ -179,43 +133,66 @@ def load_translations(lang):
             "comparison_title": "Null values comparison",
             "select_method_label": "Select treatment method",
             "fill_value_prompt": "Enter fill value:",
-            "treatment_error": "Error applying treatment",
-            "eda_title": "Exploratory Data Analysis (EDA)",
-            "missing_data_title": "Missing Data",
-            "data_quality_title": "Data Quality",
-            "correlation_title": "Correlation Analysis",
-            "correlation_matrix": "Correlation Matrix",
-            "top_correlations": "Top Correlations",
-            "r2_score": "Coefficient of Determination (R²)",
-            "mse": "Mean Squared Error (MSE)",
-            "rmse": "Root Mean Squared Error (RMSE)",
-            "visualization_title": "Data Visualization",
-            "histogram_btn": "Histogram",
-            "boxplot_btn": "Box Plot",
-            "scatter_btn": "Scatter Plot",
-            "select_column": "Select column:",
-            "select_columns": "Select columns:",
-            "select_x": "Variable X:",
-            "select_y": "Variable Y:",
-            "no_numeric_cols": "No numeric columns to visualize",
-            "report_generated": "EDA report generated successfully",
-            "download_report": "Download Full Report",
-            "data_quality_issue": "Data quality issue detected",
-            "high_missing": "High percentage of missing values (>30%)",
-            "potential_outliers": "Potential outliers detected",
-            "inconsistent_dates": "Inconsistent dates detected",
-            "text_analysis": "Text Analysis",
-            "unique_values": "Unique values:",
-            "most_common": "Most common values:",
-            "data_cleaning": "Data Cleaning",
-            "apply_cleaning": "Apply Cleaning",
-            "cleaning_options": {
-                "trim_spaces": "Trim whitespace",
-                "lowercase": "Convert to lowercase",
-                "remove_special": "Remove special characters",
-                "date_format": "Standardize date format"
-            },
-            "cleaning_success": "Cleaning applied successfully"
+            "treatment_error": "Error applying treatment"
+        },
+        "fr": {
+            "title": "🔍 Analyse et Nettoyage de Données",
+            "upload_label": "Téléchargez votre fichier CSV",
+            "upload_help": "Sélectionnez le jeu de données à analyser",
+            "file_loaded": "Fichier chargé:",
+            "file_size": "Taille:",
+            "quick_preview": "Aperçu Rapide",
+            "analysis_btn": "Exécuter l'Analyse des Données",
+            "analysis_help": "Analyser le jeu de données pour les valeurs nulles et problèmes courants",
+            "export_label": "Voulez-vous exporter l'analyse des valeurs nulles?",
+            "export_btn": "Télécharger l'Analyse des Nuls",
+            "duplicates_btn": "Analyse des Doublons",
+            "outliers_btn": "Analyse des Valeurs Aberrantes",
+            "null_treatment_btn": "Traitement des Données Nulles",
+            "basic_info": "Informations de Base",
+            "rows": "Nombre de lignes:",
+            "cols": "Nombre de colonnes:",
+            "null_tab": "Valeurs Nulles",
+            "types_tab": "Types de Données",
+            "stats_tab": "Statistiques",
+            "sample_tab": "Échantillon de Données",
+            "null_title": "Valeurs Nulles par Colonne",
+            "col_name": "Colonne",
+            "null_count": "Valeurs Nulles",
+            "null_percent": "Pourcentage (%)",
+            "null_warning": "⚠️ Le jeu de données contient des valeurs nulles à traiter",
+            "null_success": "✅ Aucune valeur nulle trouvée dans le jeu de données",
+            "types_title": "Types de Données par Colonne",
+            "data_type": "Type de Donnée",
+            "numeric_cols": "Colonnes numériques:",
+            "non_numeric_cols": "Colonnes non numériques:",
+            "stats_title": "Statistiques Descriptives",
+            "sample_title": "Échantillon de Données (10 premières lignes)",
+            "duplicates_title": "Analyse des Doublons",
+            "total_duplicates": "Lignes dupliquées totales:",
+            "duplicate_rows": "Lignes dupliquées:",
+            "outliers_title": "Analyse des Valeurs Aberrantes",
+            "outliers_col": "Colonne:",
+            "outliers_count": "Valeurs aberrantes détectées:",
+            "outliers_percent": "Pourcentage de valeurs aberrantes:",
+            "treatment_title": "Traitement des Données Nulles",
+            "treatment_option1": "Supprimer les lignes avec valeurs nulles",
+            "treatment_option2": "Remplir avec la moyenne (colonnes numériques)",
+            "treatment_option3": "Remplir avec la médiane (colonnes numériques)",
+            "treatment_option4": "Remplir avec le mode (colonnes catégorielles)",
+            "treatment_option5": "Remplir avec une valeur spécifique:",
+            "apply_treatment": "Appliquer le Traitement",
+            "treatment_success": "Traitement appliqué avec succès",
+            "no_nulls": "Aucune valeur nulle à traiter",
+            "no_duplicates": "Aucun doublon à afficher",
+            "herramientas_analisis": "Outils d'Analyse",
+            "selector_idioma": "Choisir la langue",
+            "dataset_tras_tratamiento": "Dataset après traitement",
+            "reset_button": "Réinitialiser aux données originales",
+            "comparison_title": "Comparaison des valeurs nulles",
+            "select_method_label": "Sélectionnez la méthode de traitement",
+            "fill_value_prompt": "Entrez la valeur de remplissage:",
+            "treatment_error": "Erreur lors de l'application du traitement"
         }
     }
     return translations.get(lang, translations["en"])
@@ -259,113 +236,6 @@ def get_duplicate_analysis(df):
     duplicate_rows = df[df.duplicated(keep=False)] if total_duplicates > 0 else None
     return total_duplicates, duplicate_rows
 
-def detect_data_quality_issues(df):
-    """Detecta problemas comunes de calidad de datos."""
-    issues = []
-    
-    # Detección de valores faltantes
-    nulls, nulls_percent = get_null_analysis(df)
-    high_missing = nulls_percent[nulls_percent > 30].index.tolist()
-    if high_missing:
-        issues.append(("high_missing", high_missing))
-    
-    # Detección de outliers potenciales (para columnas numéricas)
-    numeric_cols = df.select_dtypes(include=['number']).columns
-    potential_outliers = []
-    
-    for col in numeric_cols:
-        if df[col].notna().sum() > 0:
-            Q1 = df[col].quantile(0.25)
-            Q3 = df[col].quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 3 * IQR
-            upper_bound = Q3 + 3 * IQR
-            
-            outliers_count = ((df[col] < lower_bound) | (df[col] > upper_bound)).sum()
-            if outliers_count > 0:
-                potential_outliers.append(col)
-    
-    if potential_outliers:
-        issues.append(("potential_outliers", potential_outliers))
-    
-    # Detección de fechas inconsistentes
-    date_cols = df.select_dtypes(include=['datetime', 'datetime64']).columns
-    inconsistent_dates = []
-    
-    for col in date_cols:
-        if df[col].dt.year.max() > 2100 or df[col].dt.year.min() < 1900:
-            inconsistent_dates.append(col)
-    
-    if inconsistent_dates:
-        issues.append(("inconsistent_dates", inconsistent_dates))
-    
-    return issues
-
-def calculate_correlations(df):
-    """Calcula correlaciones entre variables numéricas."""
-    numeric_df = df.select_dtypes(include=['number'])
-    
-    if len(numeric_df.columns) < 2:
-        return None, None, None
-    
-    corr_matrix = numeric_df.corr()
-    
-    # Obtener las top correlaciones (excluyendo la diagonal)
-    corr_unstacked = corr_matrix.unstack()
-    corr_unstacked = corr_unstacked[corr_unstacked.index.get_level_values(0) != corr_unstacked.index.get_level_values(1)]
-    top_correlations = corr_unstacked.sort_values(ascending=False).head(10)
-    
-    # Calcular R², MSE y RMSE para las top correlaciones
-    metrics = []
-    for (col1, col2), corr in top_correlations.items():
-        if col1 != col2:
-            valid_rows = df[[col1, col2]].dropna()
-            if len(valid_rows) > 1:
-                r2 = r2_score(valid_rows[col1], valid_rows[col2])
-                mse = mean_squared_error(valid_rows[col1], valid_rows[col2])
-                rmse = np.sqrt(mse)
-                metrics.append((col1, col2, corr, r2, mse, rmse))
-    
-    metrics_df = pd.DataFrame(metrics, columns=['Variable 1', 'Variable 2', 'Correlation', 'R²', 'MSE', 'RMSE'])
-    
-    return corr_matrix, top_correlations, metrics_df
-
-def generate_eda_report(df):
-    """Genera un reporte EDA completo."""
-    buffer = BytesIO()
-    
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        # Información básica
-        pd.DataFrame({
-            'Metric': ['Number of rows', 'Number of columns', 'Total missing values'],
-            'Value': [len(df), len(df.columns), df.isnull().sum().sum()]
-        }).to_excel(writer, sheet_name='Basic Info', index=False)
-        
-        # Valores nulos
-        nulls, nulls_percent = get_null_analysis(df)
-        pd.DataFrame({
-            'Column': nulls.index,
-            'Null Count': nulls.values,
-            'Null Percentage': nulls_percent.values
-        }).to_excel(writer, sheet_name='Null Values', index=False)
-        
-        # Estadísticas descriptivas
-        df.describe(include='all').T.to_excel(writer, sheet_name='Descriptive Stats')
-        
-        # Correlaciones
-        numeric_df = df.select_dtypes(include=['number'])
-        if len(numeric_df.columns) > 0:
-            numeric_df.corr().to_excel(writer, sheet_name='Correlations')
-        
-        # Tipos de datos
-        pd.DataFrame({
-            'Column': df.dtypes.index,
-            'Data Type': df.dtypes.values
-        }).to_excel(writer, sheet_name='Data Types', index=False)
-    
-    buffer.seek(0)
-    return buffer
-
 # =============================================
 # FUNCIONES PARA VISUALIZACIÓN
 # =============================================
@@ -377,13 +247,11 @@ def show_analysis(df, tr):
     st.write(f"**{tr['cols']}** {df.shape[1]}")
     
     # Crear pestañas para diferentes análisis
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         tr["null_tab"], 
         tr["types_tab"], 
         tr["stats_tab"], 
-        tr["sample_tab"],
-        tr["eda_tab"],
-        tr["correlation_tab"]
+        tr["sample_tab"]
     ])
     
     with tab1:
@@ -397,12 +265,6 @@ def show_analysis(df, tr):
     
     with tab4:
         show_data_sample(df, tr)
-        
-    with tab5:
-        show_eda_analysis(df, tr)
-        
-    with tab6:
-        show_correlation_analysis(df, tr)
 
 def show_null_analysis(df, tr):
     """Muestra el análisis de valores nulos."""
@@ -475,7 +337,7 @@ def show_outliers(df, tr):
     numeric_cols = df.select_dtypes(include=['number']).columns
     
     if len(numeric_cols) == 0:
-        st.warning(tr["no_numeric_cols"])
+        st.warning("No numeric columns found for outlier detection")
         return
     
     selected_col = st.selectbox(tr["outliers_col"], numeric_cols)
@@ -497,218 +359,10 @@ def show_outliers(df, tr):
         
         if outliers_count > 0:
             st.dataframe(outliers)
-            
-            # Mostrar gráfico de caja
-            fig, ax = plt.subplots(figsize=(10, 4))
-            sns.boxplot(x=df[selected_col], ax=ax)
-            ax.set_title(f'Boxplot of {selected_col}')
-            st.pyplot(fig)
         else:
             st.success("✅ No outliers detected in this column")
     else:
         st.warning("Selected column contains only null values")
-
-def show_eda_analysis(df, tr):
-    """Muestra análisis exploratorio avanzado."""
-    st.subheader("🔍 " + tr["eda_title"])
-    
-    # Detección de problemas de calidad de datos
-    st.write("### " + tr["data_quality_title"])
-    issues = detect_data_quality_issues(df)
-    
-    if issues:
-        for issue_type, cols in issues:
-            if issue_type == "high_missing":
-                st.warning(f"⚠️ {tr['high_missing']} in columns: {', '.join(cols)}")
-            elif issue_type == "potential_outliers":
-                st.warning(f"⚠️ {tr['potential_outliers']} in columns: {', '.join(cols)}")
-            elif issue_type == "inconsistent_dates":
-                st.warning(f"⚠️ {tr['inconsistent_dates']} in columns: {', '.join(cols)}")
-    else:
-        st.success("✅ No major data quality issues detected")
-    
-    # Análisis de columnas categóricas/texto
-    non_numeric_cols = df.select_dtypes(exclude=['number']).columns
-    if len(non_numeric_cols) > 0:
-        st.write("### " + tr["text_analysis"])
-        selected_col = st.selectbox(tr["select_column"], non_numeric_cols)
-        
-        st.write(f"**{tr['unique_values']}** {df[selected_col].nunique()}")
-        
-        if df[selected_col].nunique() < 20:
-            st.write(f"**{tr['most_common']}**")
-            st.table(df[selected_col].value_counts().head(10))
-        else:
-            st.write(f"**{tr['most_common']}**")
-            st.table(df[selected_col].value_counts().head(5))
-            
-            # Mostrar distribución de longitudes para texto
-            if df[selected_col].dtype == 'object':
-                df['text_length'] = df[selected_col].astype(str).apply(len)
-                fig, ax = plt.subplots(figsize=(10, 4))
-                sns.histplot(df['text_length'], bins=30, ax=ax)
-                ax.set_title(f'Distribution of text lengths for {selected_col}')
-                st.pyplot(fig)
-
-def show_correlation_analysis(df, tr):
-    """Muestra análisis de correlación."""
-    st.subheader("📊 " + tr["correlation_title"])
-    
-    corr_matrix, top_correlations, metrics_df = calculate_correlations(df)
-    
-    if corr_matrix is not None:
-        st.write("### " + tr["correlation_matrix"])
-        
-        # Mostrar heatmap de correlación
-        fig, ax = plt.subplots(figsize=(10, 8))
-        sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', 
-                   center=0, ax=ax, linewidths=.5)
-        ax.set_title('Correlation Matrix')
-        st.pyplot(fig)
-        
-        # Mostrar top correlaciones
-        st.write("### " + tr["top_correlations"])
-        st.dataframe(metrics_df)
-        
-        # Mostrar métricas R², MSE, RMSE
-        if not metrics_df.empty:
-            selected_pair = st.selectbox(
-                "Select variable pair to view metrics:",
-                options=[f"{row['Variable 1']} vs {row['Variable 2']}" for _, row in metrics_df.iterrows()]
-            )
-            
-            if selected_pair:
-                selected_row = metrics_df[
-                    (metrics_df['Variable 1'] == selected_pair.split(" vs ")[0]) & 
-                    (metrics_df['Variable 2'] == selected_pair.split(" vs ")[1])
-                ].iloc[0]
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric(tr["r2_score"], f"{selected_row['R²']:.4f}")
-                with col2:
-                    st.metric(tr["mse"], f"{selected_row['MSE']:.4f}")
-                with col3:
-                    st.metric(tr["rmse"], f"{selected_row['RMSE']:.4f}")
-                
-                # Mostrar gráfico de dispersión
-                fig, ax = plt.subplots(figsize=(8, 6))
-                sns.scatterplot(
-                    data=df, 
-                    x=selected_row['Variable 1'], 
-                    y=selected_row['Variable 2'],
-                    ax=ax
-                )
-                ax.set_title(f"{selected_row['Variable 1']} vs {selected_row['Variable 2']}")
-                st.pyplot(fig)
-    else:
-        st.warning("Not enough numeric columns for correlation analysis")
-
-def show_visualization_tools(df, tr):
-    """Muestra herramientas de visualización."""
-    st.subheader("📊 " + tr["visualization_title"])
-    
-    numeric_cols = df.select_dtypes(include=['number']).columns
-    
-    if len(numeric_cols) == 0:
-        st.warning(tr["no_numeric_cols"])
-        return
-    
-    # Pestañas para diferentes tipos de visualizaciones
-    tab1, tab2, tab3 = st.tabs([
-        tr["histogram_btn"], 
-        tr["boxplot_btn"], 
-        tr["scatter_btn"]
-    ])
-    
-    with tab1:
-        # Histograma
-        selected_col = st.selectbox(tr["select_column"] + " (Histogram)", numeric_cols)
-        bins = st.slider("Number of bins", 5, 100, 20)
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.histplot(df[selected_col], bins=bins, kde=True, ax=ax)
-        ax.set_title(f'Histogram of {selected_col}')
-        st.pyplot(fig)
-    
-    with tab2:
-        # Boxplot
-        selected_col = st.selectbox(tr["select_column"] + " (Boxplot)", numeric_cols)
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.boxplot(x=df[selected_col], ax=ax)
-        ax.set_title(f'Boxplot of {selected_col}')
-        st.pyplot(fig)
-    
-    with tab3:
-        # Scatter plot
-        if len(numeric_cols) >= 2:
-            col1, col2 = st.columns(2)
-            with col1:
-                x_col = st.selectbox(tr["select_x"], numeric_cols)
-            with col2:
-                y_col = st.selectbox(tr["select_y"], numeric_cols, 
-                                    index=1 if len(numeric_cols) > 1 else 0)
-            
-            fig, ax = plt.subplots(figsize=(10, 6))
-            sns.scatterplot(data=df, x=x_col, y=y_col, ax=ax)
-            ax.set_title(f'{x_col} vs {y_col}')
-            st.pyplot(fig)
-        else:
-            st.warning("At least 2 numeric columns are required for scatter plot")
-
-def show_data_cleaning(df, tr):
-    """Muestra herramientas de limpieza de datos."""
-    st.subheader("🧹 " + tr["data_cleaning"])
-    
-    # Opciones de limpieza
-    st.write("### Cleaning Options")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        trim_spaces = st.checkbox(tr["cleaning_options"]["trim_spaces"])
-        lowercase = st.checkbox(tr["cleaning_options"]["lowercase"])
-    
-    with col2:
-        remove_special = st.checkbox(tr["cleaning_options"]["remove_special"])
-        date_format = st.checkbox(tr["cleaning_options"]["date_format"])
-    
-    # Aplicar limpieza
-    if st.button(tr["apply_cleaning"]):
-        cleaned_df = df.copy()
-        
-        # Limpieza de espacios en blanco para columnas de texto
-        if trim_spaces:
-            text_cols = cleaned_df.select_dtypes(include=['object']).columns
-            for col in text_cols:
-                cleaned_df[col] = cleaned_df[col].astype(str).str.strip()
-        
-        # Convertir a minúsculas
-        if lowercase:
-            text_cols = cleaned_df.select_dtypes(include=['object']).columns
-            for col in text_cols:
-                cleaned_df[col] = cleaned_df[col].astype(str).str.lower()
-        
-        # Eliminar caracteres especiales
-        if remove_special:
-            text_cols = cleaned_df.select_dtypes(include=['object']).columns
-            for col in text_cols:
-                cleaned_df[col] = cleaned_df[col].astype(str).str.replace(r'[^\w\s]', '', regex=True)
-        
-        # Estandarizar formato de fecha
-        if date_format:
-            date_cols = cleaned_df.select_dtypes(include=['datetime', 'object']).columns
-            for col in date_cols:
-                try:
-                    cleaned_df[col] = pd.to_datetime(cleaned_df[col], errors='coerce')
-                except:
-                    pass
-        
-        st.session_state.df_treated = cleaned_df
-        st.success(tr["cleaning_success"])
-        st.experimental_rerun()
-    
-    return df
 
 # =============================================
 # TRATAMIENTO DE VALORES NULOS
@@ -752,9 +406,9 @@ def null_treatment(df, tr):
 
     # Botón de aplicación
     if st.button(tr["apply_treatment"], key="apply_treatment_button"):
-        temp_df = st.session_state.df_treated.copy()
-        
         try:
+            temp_df = st.session_state.df_treated.copy()
+            
             if treatment_option == tr["treatment_option1"]:
                 initial_rows = len(temp_df)
                 temp_df = temp_df.dropna()
@@ -784,26 +438,32 @@ def null_treatment(df, tr):
             
             elif treatment_option == tr["treatment_option5"] and fill_value:
                 try:
+                    # Intentar convertir a número
                     fill_value_num = float(fill_value)
                     temp_df = temp_df.fillna(fill_value_num)
                 except ValueError:
+                    # Si falla, usar como string
                     temp_df = temp_df.fillna(fill_value)
             
+            # Actualizar el estado de sesión
             st.session_state.df_treated = temp_df
             st.session_state.last_treatment = treatment_option
             st.session_state.show_comparison = True
+            
             st.success("✅ " + tr["treatment_success"])
             
         except Exception as e:
             st.error(f"❌ {tr['treatment_error']}: {str(e)}")
 
-    # Mostrar comparación
+    # Mostrar comparación si se aplicó un tratamiento
     if st.session_state.show_comparison:
         st.subheader(tr["comparison_title"])
         col1, col2 = st.columns(2)
+        
         with col1:
             st.markdown("**Before treatment**")
             st.write(df.isna().sum())
+        
         with col2:
             st.markdown("**After treatment**")
             st.write(st.session_state.df_treated.isna().sum())
@@ -815,3 +475,76 @@ def null_treatment(df, tr):
         st.experimental_rerun()
 
     return st.session_state.df_treated
+
+# =============================================
+# INTERFAZ PRINCIPAL
+# =============================================
+
+def main():
+    # Cargar traducciones por defecto (inglés) primero
+    tr = load_translations("en")
+    
+    # Selector de idioma
+    st.sidebar.title("🌍 Language / Idioma / Langue")
+    language = st.sidebar.radio("", ["Español", "English", "Français"], label_visibility="collapsed")
+    lang_code = {"Español": "es", "English": "en", "Français": "fr"}[language]
+    
+    # Cargar las traducciones del idioma seleccionado
+    tr = load_translations(lang_code)
+    
+    st.title(tr["title"])
+    
+    # Cargar archivo CSV
+    file = st.file_uploader(
+        tr["upload_label"], 
+        type=['csv'],
+        help=tr["upload_help"]
+    )
+    
+    if file is not None:
+        # Mostrar información del archivo
+        st.success(f"{tr['file_loaded']} {file.name}")
+        st.write(f"{tr['file_size']} {file.size / 1024:.2f} KB")
+        
+        # Cargar el dataset
+        df = load_dataset(file)
+        
+        if df is not None:
+            # Mostrar vista previa básica
+            st.write("### " + tr["quick_preview"])
+            st.dataframe(df.head(3))
+            
+            # Contenedor para los botones de análisis
+            st.sidebar.title("🔧 " + tr["herramientas_analisis"])
+            
+            # Botón de análisis completo
+            if st.sidebar.button("🔍 " + tr["analysis_btn"], help=tr["analysis_help"]):
+                show_analysis(df, tr)
+            
+            # Botón de análisis de duplicados
+            if st.sidebar.button("📝 " + tr["duplicates_btn"]):
+                show_duplicates(df, tr)
+            
+            # Botón de análisis de outliers
+            if st.sidebar.button("📊 " + tr["outliers_btn"]):
+                show_outliers(df, tr)
+            
+            # Botón de tratamiento de nulos
+            if st.sidebar.button("🛠️ " + tr["null_treatment_btn"]):
+                df = null_treatment(df, tr)
+                st.write("### " + tr["dataset_tras_tratamiento"])
+                st.dataframe(df.head())
+            
+            # Opción para descargar el análisis
+            if st.sidebar.checkbox(tr["export_label"]):
+                nulls = df.isnull().sum().reset_index()
+                nulls.columns = ['Column', 'Null_Values']
+                st.sidebar.download_button(
+                    label="📥 " + tr["export_btn"],
+                    data=nulls.to_csv(index=False).encode('utf-8'),
+                    file_name='null_analysis.csv',
+                    mime='text/csv'
+                )
+
+if __name__ == "__main__":
+    main()

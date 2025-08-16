@@ -376,19 +376,20 @@ def main():
             st.dataframe(df.head(3))
             
             # Contenedor para los botones de análisis
-            col1, col2, col3 = st.columns(3)
+            # SECCIÓN DE BOTONES EN EL SIDEBAR
+            st.sidebar.title("🔧 " + tr["herramientas_analisis"])
             
-            with col1:
-                if st.button("🔍 " + tr["analysis_btn"], help=tr["analysis_help"]):
-                    show_analysis(df, tr)
+            # Botón de análisis completo
+            if st.sidebar.button("🔍 " + tr["analysis_btn"], help=tr["analysis_help"]):
+                show_analysis(df, tr)
             
-            with col2:
-                if st.button("📝 " + tr["duplicates_btn"]):
-                    show_duplicates(df, tr)
+            # Botón de análisis de duplicados
+            if st.sidebar.button("📝 " + tr["duplicates_btn"]):
+                show_duplicates(df, tr)
             
-            with col3:
-                if st.button("📊 " + tr["outliers_btn"]):
-                    show_outliers(df, tr)
+            # Botón de análisis de outliers
+            if st.sidebar.button("📊 " + tr["outliers_btn"]):
+                show_outliers(df, tr)
             
             # Botón de tratamiento de nulos
             if st.button("🛠️ " + tr["null_treatment_btn"]):

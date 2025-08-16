@@ -59,8 +59,8 @@ def load_translations(lang):
             "outliers_percent": "Porcentaje de outliers:",
             "treatment_title": "Tratamiento de Datos Nulos",
             "treatment_option1": "Eliminar filas con valores nulos",
-            "treatment_option2": "Rellenar con la media (columnas numéricas)",
-            "treatment_option3": "Rellenar con la moda (columnas categóricas)",
+            "treatment_option2": "Rellenar con la media ",
+            "treatment_option3": "Rellenar con la mediana",
             "treatment_option4": "Rellenar con valor específico:",
             "apply_treatment": "Aplicar Tratamiento",
             "treatment_success": "Tratamiento aplicado correctamente",
@@ -339,9 +339,9 @@ def null_treatment(df, tr):
             for col in numeric_cols:
                 df_treated[col] = df_treated[col].fillna(df_treated[col].mean())
         elif treatment_option == tr["treatment_option3"]:
-            non_numeric_cols = df_treated.select_dtypes(exclude=['number']).columns
-            for col in non_numeric_cols:
-                df_treated[col] = df_treated[col].fillna(df_treated[col].mode()[0])
+            numeric_cols = df_treated.select_dtypes(include=['number']).columns
+            for col in numeric_cols:
+                df_treated[col] = df_treated[col].fillna(df_treated[col].median())
         elif treatment_option == tr["treatment_option4"] and fill_value:
             try:
                 # Intentar convertir a número si es posible

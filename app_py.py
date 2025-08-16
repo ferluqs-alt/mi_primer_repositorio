@@ -310,19 +310,21 @@ def show_outliers(df, tr):
 
 # Función para tratamiento de nulos
 def null_treatment(df, tr):
-    # Inicializar session_state si no existe
+    # Inicialización del estado de sesión
     if 'df_treated' not in st.session_state:
         st.session_state.df_treated = df.copy()
-        st.session_state.treatment_applied = False
+        st.session_state.last_treatment = None
+        st.session_state.show_comparison = False
 
+    # Configuración de la interfaz
     st.subheader("🛠️ " + tr.get("treatment_title", "Tratamiento de Valores Nulos"))
 
-    # Mostrar estado actual de nulos
+    # Verificar si ya no hay nulos
     if st.session_state.df_treated.isnull().sum().sum() == 0:
         st.success("✅ " + tr.get("no_nulls", "No hay valores nulos en el dataset"))
         return st.session_state.df_treated
 
-    # Radio button para selección de método
+    # Widgets de selección
     treatment_option = st.radio(
         tr.get("select_method_label", "Seleccione método de tratamiento"),
         options=[
@@ -331,60 +333,78 @@ def null_treatment(df, tr):
             tr.get("treatment_option3", "Rellenar con la mediana (solo numéricos)"),
             tr.get("treatment_option4", "Rellenar con valor específico")
         ],
-        key="treatment_option"  # Clave única para este widget
+        key="treatment_option_radio"
     )
 
     # Input para valor específico
     fill_value = None
     if treatment_option == tr.get("treatment_option4", ""):
-        fill_value = st.text_input(tr.get("fill_value_prompt", "Ingrese el valor de relleno:"), key="fill_value")
+        fill_value = st.text_input(
+            tr.get("fill_value_prompt", "Ingrese el valor de relleno:"),
+            key="fill_value_input"
+        )
 
     # Botón de aplicación
-    if st.button(tr.get("apply_treatment", "Aplicar tratamiento"), key="apply_button"):
+    if st.button(tr.get("apply_treatment", "Aplicar tratamiento"), key="apply_treatment_button"):
         try:
+            # Copia temporal para trabajar
+            temp_df = st.session_state.df_treated.copy()
+            
             if treatment_option == tr.get("treatment_option1", ""):
-                initial_rows = len(st.session_state.df_treated)
-                st.session_state.df_treated = st.session_state.df_treated.dropna()
-                removed_rows = initial_rows - len(st.session_state.df_treated)
+                initial_rows = len(temp_df)
+                temp_df = temp_df.dropna()
+                removed_rows = initial_rows - len(temp_df)
                 st.info(f"Se eliminaron {removed_rows} filas con valores nulos")
-
+                
             elif treatment_option == tr.get("treatment_option2", ""):
-                numeric_cols = st.session_state.df_treated.select_dtypes(include=['number']).columns
+                numeric_cols = temp_df.select_dtypes(include=['number']).columns
                 for col in numeric_cols:
-                    if st.session_state.df_treated[col].isnull().sum() > 0:
-                        mean_val = st.session_state.df_treated[col].mean()
-                        st.session_state.df_treated[col] = st.session_state.df_treated[col].fillna(mean_val)
-
+                    if temp_df[col].isnull().sum() > 0:
+                        mean_val = temp_df[col].mean()
+                        temp_df[col] = temp_df[col].fillna(mean_val)
+                        
             elif treatment_option == tr.get("treatment_option3", ""):
-                numeric_cols = st.session_state.df_treated.select_dtypes(include=['number']).columns
+                numeric_cols = temp_df.select_dtypes(include=['number']).columns
                 for col in numeric_cols:
-                    if st.session_state.df_treated[col].isnull().sum() > 0:
-                        median_val = st.session_state.df_treated[col].median()
-                        st.session_state.df_treated[col] = st.session_state.df_treated[col].fillna(median_val)
-
+                    if temp_df[col].isnull().sum() > 0:
+                        median_val = temp_df[col].median()
+                        temp_df[col] = temp_df[col].fillna(median_val)
+                        
             elif treatment_option == tr.get("treatment_option4", "") and fill_value:
                 try:
                     fill_value_num = float(fill_value)
-                    st.session_state.df_treated = st.session_state.df_treated.fillna(fill_value_num)
+                    temp_df = temp_df.fillna(fill_value_num)
                 except ValueError:
-                    st.session_state.df_treated = st.session_state.df_treated.fillna(fill_value)
-
-            st.session_state.treatment_applied = True
+                    temp_df = temp_df.fillna(fill_value)
+            
+            # Actualizar el estado de sesión solo si el tratamiento fue exitoso
+            st.session_state.df_treated = temp_df
+            st.session_state.last_treatment = treatment_option
+            st.session_state.show_comparison = True
+            
             st.success("✅ " + tr.get("treatment_success", "Tratamiento aplicado correctamente"))
-
+            
         except Exception as e:
-            st.error(f"Error al aplicar tratamiento: {str(e)}")
+            st.error(f"❌ {tr.get('treatment_error', 'Error al aplicar tratamiento')}: {str(e)}")
 
-    # Mostrar comparación después de aplicar tratamiento
-    if st.session_state.treatment_applied:
+    # Mostrar comparación si se aplicó un tratamiento
+    if st.session_state.show_comparison:
         st.subheader(tr.get("comparison_title", "Comparación de valores nulos"))
         col1, col2 = st.columns(2)
+        
         with col1:
-            st.write("**Antes del tratamiento:**")
+            st.markdown("**Antes del tratamiento**")
             st.write(df.isna().sum())
+        
         with col2:
-            st.write("**Después del tratamiento:**")
+            st.markdown("**Después del tratamiento**")
             st.write(st.session_state.df_treated.isna().sum())
+
+    # Botón para resetear
+    if st.button(tr.get("reset_button", "Resetear a datos originales"), key="reset_button"):
+        st.session_state.df_treated = df.copy()
+        st.session_state.show_comparison = False
+        st.experimental_rerun()
 
     return st.session_state.df_treated
 # Interfaz principal de la aplicación

@@ -794,4 +794,30 @@ def null_treatment(df, tr):
             # Actualizar el estado de sesión
             st.session_state.df_treated = temp_df
             st.session_state.last_treatment = treatment_option
-            st.session_state.show_compar
+            st.session_state.show_comparison = True
+            
+            st.success("✅ " + tr["treatment_success"])
+            
+        except Exception as e:
+            st.error(f"❌ {tr['treatment_error']}: {str(e)}")
+
+    # Mostrar comparación si se aplicó un tratamiento
+    if st.session_state.show_comparison:
+        st.subheader(tr["comparison_title"])
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Before treatment**")
+            st.write(df.isna().sum())
+        
+        with col2:
+            st.markdown("**After treatment**")
+            st.write(st.session_state.df_treated.isna().sum())
+
+    # Botón para resetear
+    if st.button(tr["reset_button"], key="reset_button"):
+        st.session_state.df_treated = df.copy()
+        st.session_state.show_comparison = False
+        st.experimental_rerun()
+
+    return st.session_state.df_treated

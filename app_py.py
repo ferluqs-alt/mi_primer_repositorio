@@ -310,82 +310,82 @@ def show_outliers(df, tr):
 
 # Función para tratamiento de nulos
 def null_treatment(df, tr):
-    # Verificar si ya existe un DataFrame tratado en el estado de sesión
+    # Inicializar session_state si no existe
     if 'df_treated' not in st.session_state:
         st.session_state.df_treated = df.copy()
-    
-    # Usar el DataFrame tratado si existe
-    current_df = st.session_state.df_treated
-    
+        st.session_state.treatment_applied = False
+
     st.subheader("🛠️ " + tr.get("treatment_title", "Tratamiento de Valores Nulos"))
-    
-    # Verificar nulos en el DataFrame actual
-    if current_df.isnull().sum().sum() == 0:
+
+    # Mostrar estado actual de nulos
+    if st.session_state.df_treated.isnull().sum().sum() == 0:
         st.success("✅ " + tr.get("no_nulls", "No hay valores nulos en el dataset"))
-        return current_df
-    
+        return st.session_state.df_treated
+
+    # Radio button para selección de método
     treatment_option = st.radio(
         tr.get("select_method_label", "Seleccione método de tratamiento"),
-        [
+        options=[
             tr.get("treatment_option1", "Eliminar filas con valores nulos"),
             tr.get("treatment_option2", "Rellenar con la media (solo numéricos)"),
             tr.get("treatment_option3", "Rellenar con la mediana (solo numéricos)"),
             tr.get("treatment_option4", "Rellenar con valor específico")
-        ]
+        ],
+        key="treatment_option"  # Clave única para este widget
     )
-    
+
+    # Input para valor específico
     fill_value = None
     if treatment_option == tr.get("treatment_option4", ""):
-        fill_value = st.text_input(tr.get("fill_value_prompt", "Ingrese el valor de relleno:"))
-    
-    if st.button(tr.get("apply_treatment", "Aplicar tratamiento")):
+        fill_value = st.text_input(tr.get("fill_value_prompt", "Ingrese el valor de relleno:"), key="fill_value")
+
+    # Botón de aplicación
+    if st.button(tr.get("apply_treatment", "Aplicar tratamiento"), key="apply_button"):
         try:
             if treatment_option == tr.get("treatment_option1", ""):
-                initial_rows = len(current_df)
-                st.session_state.df_treated = current_df.dropna()
+                initial_rows = len(st.session_state.df_treated)
+                st.session_state.df_treated = st.session_state.df_treated.dropna()
                 removed_rows = initial_rows - len(st.session_state.df_treated)
                 st.info(f"Se eliminaron {removed_rows} filas con valores nulos")
-                
+
             elif treatment_option == tr.get("treatment_option2", ""):
-                numeric_cols = current_df.select_dtypes(include=['number']).columns
+                numeric_cols = st.session_state.df_treated.select_dtypes(include=['number']).columns
                 for col in numeric_cols:
-                    if current_df[col].isnull().sum() > 0:
-                        mean_val = current_df[col].mean()
-                        st.session_state.df_treated[col] = current_df[col].fillna(mean_val)
-                        st.write(f"Columna {col}: rellenados {current_df[col].isnull().sum()} nulos con media {mean_val:.2f}")
-                
+                    if st.session_state.df_treated[col].isnull().sum() > 0:
+                        mean_val = st.session_state.df_treated[col].mean()
+                        st.session_state.df_treated[col] = st.session_state.df_treated[col].fillna(mean_val)
+
             elif treatment_option == tr.get("treatment_option3", ""):
-                numeric_cols = current_df.select_dtypes(include=['number']).columns
+                numeric_cols = st.session_state.df_treated.select_dtypes(include=['number']).columns
                 for col in numeric_cols:
-                    if current_df[col].isnull().sum() > 0:
-                        median_val = current_df[col].median()
-                        st.session_state.df_treated[col] = current_df[col].fillna(median_val)
-                        st.write(f"Columna {col}: rellenados {current_df[col].isnull().sum()} nulos con mediana {median_val:.2f}")
-                
+                    if st.session_state.df_treated[col].isnull().sum() > 0:
+                        median_val = st.session_state.df_treated[col].median()
+                        st.session_state.df_treated[col] = st.session_state.df_treated[col].fillna(median_val)
+
             elif treatment_option == tr.get("treatment_option4", "") and fill_value:
                 try:
                     fill_value_num = float(fill_value)
-                    st.session_state.df_treated = current_df.fillna(fill_value_num)
-                    st.write(f"Todos los nulos rellenados con valor: {fill_value_num}")
+                    st.session_state.df_treated = st.session_state.df_treated.fillna(fill_value_num)
                 except ValueError:
-                    st.session_state.df_treated = current_df.fillna(fill_value)
-                    st.write(f"Todos los nulos rellenados con valor: {fill_value}")
-            
+                    st.session_state.df_treated = st.session_state.df_treated.fillna(fill_value)
+
+            st.session_state.treatment_applied = True
             st.success("✅ " + tr.get("treatment_success", "Tratamiento aplicado correctamente"))
-            
-            # Mostrar comparación
-            st.subheader("Comparación de valores nulos")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("**Antes del tratamiento:**")
-                st.write(df.isna().sum())
-            with col2:
-                st.write("**Después del tratamiento:**")
-                st.write(st.session_state.df_treated.isna().sum())
-            
+
         except Exception as e:
             st.error(f"Error al aplicar tratamiento: {str(e)}")
-    
+
+    # Mostrar comparación después de aplicar tratamiento
+    if st.session_state.treatment_applied:
+        st.subheader(tr.get("comparison_title", "Comparación de valores nulos"))
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Antes del tratamiento:**")
+            st.write(df.isna().sum())
+        with col2:
+            st.write("**Después del tratamiento:**")
+            st.write(st.session_state.df_treated.isna().sum())
+
     return st.session_state.df_treated
 # Interfaz principal de la aplicación
 def main():

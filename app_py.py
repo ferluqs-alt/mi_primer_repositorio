@@ -481,10 +481,15 @@ def null_treatment(df, tr):
 # =============================================
 
 def main():
+    # Cargar traducciones por defecto (inglés) primero
+    tr = load_translations("en")
+    
     # Selector de idioma
-    st.sidebar.title("🌍 " + tr["selector_idioma"])
+    st.sidebar.title("🌍 Language / Idioma / Langue")
     language = st.sidebar.radio("", ["Español", "English", "Français"], label_visibility="collapsed")
     lang_code = {"Español": "es", "English": "en", "Français": "fr"}[language]
+    
+    # Cargar las traducciones del idioma seleccionado
     tr = load_translations(lang_code)
     
     st.title(tr["title"])

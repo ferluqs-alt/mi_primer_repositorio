@@ -662,4 +662,4 @@ elif pagina == "🏆 Mis Logros":
             # Contar diagnósticos
             cursor = st.session_state.db.cursor()
             cursor.execute("SELECT COUNT(*) FROM diagnosticos WHERE usuario_id = ?"), 
-                         (st.session_state)
+                       st.write(st.session_state)

@@ -392,7 +392,7 @@ if st.session_state.models_trained:
     with st.expander(text["mlp"]):
         if st.button(text["show_mlp"]):
             st.write("Métricas de rendimiento:")
-            st.dataframe(st.session_state.results.loc[[text["mlp"]], 
+            st.dataframe(st.session_state.results.loc[[text["mlp"]]], 
                      columns=['R²', 'RMSE', 'Training Time'])
             
             if text["mlp"] in st.session_state.loss_curves:
@@ -519,4 +519,5 @@ if st.session_state.models_trained:
     best_model = st.session_state.results.loc[st.session_state.results['RMSE'].idxmin()].name
     st.subheader(f"{text['best_model']} {best_model}")
     st.write(text["conclusion"])
+
 

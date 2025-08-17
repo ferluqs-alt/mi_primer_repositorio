@@ -323,10 +323,21 @@ if st.session_state.data_processed:
     if st.button(text["train_models"]):
         with st.spinner("Entrenando modelos..."):
             # Inicialización de modelos
+            #models = {
+             #   text["linear_regression"]: LinearRegression(),
+              #  text["mlp"]: MLPRegressor(hidden_layer_sizes=(50,), max_iter=500, random_state=42),
+               # text["nn_with_reg"]: MLPRegressor(hidden_layer_sizes=(50,), max_iter=500, random_state=42, alpha=0.01, dropout=0.2)
+            #}
             models = {
                 text["linear_regression"]: LinearRegression(),
                 text["mlp"]: MLPRegressor(hidden_layer_sizes=(50,), max_iter=500, random_state=42),
-                text["nn_with_reg"]: MLPRegressor(hidden_layer_sizes=(50,), max_iter=500, random_state=42, alpha=0.01, dropout=0.2)
+                text["nn_with_reg"]: MLPRegressor(
+                hidden_layer_sizes=(50,), 
+                max_iter=500, 
+                random_state=42, 
+                alpha=0.01,  # Regularización L2 (weight decay)
+                early_stopping=True  # Parada temprana para evitar sobreajuste
+                )
             }
 
             # Entrenamiento y evaluación
@@ -519,6 +530,7 @@ if st.session_state.models_trained:
     best_model = st.session_state.results.loc[st.session_state.results['RMSE'].idxmin()].name
     st.subheader(f"{text['best_model']} {best_model}")
     st.write(text["conclusion"])
+
 
 
 

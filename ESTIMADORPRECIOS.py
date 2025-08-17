@@ -380,13 +380,5 @@ st.dataframe(results_df.style.format({
 }))
 
 st.write(text["conclusion"])
-requirements.txt
-text
-streamlit==1.32.2
-pandas==2.1.4
-numpy==1.26.2
-scikit-learn==1.3.2
-matplotlib==3.8.2
-seaborn==0.13.0
-plotly==5.18.0
-scipy==1.11.4
+
+

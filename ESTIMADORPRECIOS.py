@@ -385,7 +385,7 @@ if st.session_state.models_trained:
             st.dataframe(st.session_state.coefficients.style.format({"Coefficient": "{:.4f}"}))
             
             st.write("Métricas de rendimiento:")
-            st.dataframe(st.session_state.results.loc[[text["linear_regression"]], 
+            st.dataframe(st.session_state.results.loc[[text["linear_regression"]]], 
                          columns=['R²', 'RMSE', 'Training Time'])
     
     # MLP
@@ -519,3 +519,4 @@ if st.session_state.models_trained:
     best_model = st.session_state.results.loc[st.session_state.results['RMSE'].idxmin()].name
     st.subheader(f"{text['best_model']} {best_model}")
     st.write(text["conclusion"])
+

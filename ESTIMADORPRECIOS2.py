@@ -177,6 +177,42 @@ LANGUAGES = {
         "conclusion": "Sur la base des métriques d'évaluation, le modèle avec le RMSE le plus bas et le score R² le plus élevé est le meilleur."
     }
 }
+#########################################CARGA DE DATOS##########################################
+def load_dataset(file):
+    """Carga un archivo CSV o Excel con manejo de diferentes codificaciones."""
+    try:
+        # Detectar extensión
+        file_extension = Path(file.name).suffix.lower()
+        
+        if file_extension in [".xlsx", ".xls"]:
+            df = pd.read_excel(file)
+            if df.empty:
+                st.error("The uploaded Excel file is empty.")
+                return None
+            return df
+        
+        elif file_extension == ".csv":
+            encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
+            for encoding in encodings:
+                try:
+                    df = pd.read_csv(file, encoding=encoding)
+                    if df.empty:
+                        st.error("The uploaded CSV file is empty.")
+                        return None
+                    return df
+                except UnicodeDecodeError:
+                    continue
+            st.error("Could not read the CSV file with common encodings.")
+            return None
+        
+        else:
+            st.error("Unsupported file format. Please upload a CSV or Excel file.")
+            return None
+        
+    except Exception as e:
+        st.error(f"Error loading file: {str(e)}")
+        return None
+#################################################################################################################3
 
 # Sidebar para configuración
 with st.sidebar:
@@ -541,4 +577,5 @@ if st.session_state.models_trained:
         st.subheader(f"{text['best_model']} {best_model}")
         st.write(text["conclusion"])
     except Exception as e:
+
         st.error(f"Error al mostrar resumen: {str(e)}")

@@ -178,6 +178,7 @@ LANGUAGES = {
     }
 }
 #########################################CARGA DE DATOS##########################################
+st.sidebar.header("Carga de Datos")
 def load_dataset(file):
     """Carga un archivo CSV o Excel con manejo de diferentes codificaciones."""
     try:
@@ -579,3 +580,4 @@ if st.session_state.models_trained:
     except Exception as e:
 
         st.error(f"Error al mostrar resumen: {str(e)}")
+

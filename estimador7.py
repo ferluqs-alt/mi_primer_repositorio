@@ -130,6 +130,8 @@ translations = {
         "KNN imputation": "KNN imputation",
         "One-Hot Encoding": "One-Hot Encoding",
         "Label Encoding": "Label Encoding",
+        "no_categorical_vars": "No categorical variables found",
+        "no_numeric_vars": "No numeric variables found",
         
         # Data translations (categorical values)
         "NEAR BAY": "NEAR BAY",
@@ -141,13 +143,12 @@ translations = {
         "NO": "NO",
         "TRUE": "TRUE",
         "FALSE": "FALSE",
-        # Add more categorical values as needed
     },
     "es": {
         # UI Elements
         "title": "Estimador de Precios de Viviendas",
         "upload_data": "Cargar Datos",
-        "file_types": "Seleccione un archivo CSV o Excel",
+        "file_types": "Seleccione un archivo CSV or Excel",
         "eda": "Análisis Exploratorio de Datos",
         "preprocessing": "Preprocesamiento de Datos",
         "modeling": "Modelado",
@@ -199,6 +200,8 @@ translations = {
         "KNN imputation": "Imputación KNN",
         "One-Hot Encoding": "Codificación One-Hot",
         "Label Encoding": "Codificación de Etiquetas",
+        "no_categorical_vars": "No se encontraron variables categóricas",
+        "no_numeric_vars": "No se encontraron variables numéricas",
         
         # Data translations (categorical values)
         "NEAR BAY": "CERCA DE LA BAHÍA",
@@ -210,7 +213,6 @@ translations = {
         "NO": "NO",
         "TRUE": "VERDADERO",
         "FALSE": "FALSO",
-        # Add more categorical values as needed
     },
     "fr": {
         # UI Elements
@@ -268,6 +270,8 @@ translations = {
         "KNN imputation": "Imputation KNN",
         "One-Hot Encoding": "Encodage One-Hot",
         "Label Encoding": "Encodage d'étiquettes",
+        "no_categorical_vars": "Aucune variable catégorielle trouvée",
+        "no_numeric_vars": "Aucune variable numérique trouvée",
         
         # Data translations (categorical values)
         "NEAR BAY": "PRÈS DE LA BAIE",
@@ -279,7 +283,6 @@ translations = {
         "NO": "NON",
         "TRUE": "VRAI",
         "FALSE": "FAUX",
-        # Add more categorical values as needed
     }
 }
 
@@ -373,86 +376,130 @@ def load_data(uploaded_file):
         return None
 
 def perform_eda(df, target_var):
-    # Esta función ahora solo realiza el análisis y devuelve los resultados
-    # La visualización se hará en el área principal
-    
-    # Calcular dimensiones
-    dimensions = {
-        'num_rows': df.shape[0],
-        'num_cols': df.shape[1]
-    }
-    
-    # Identificar tipos de variables
-    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
-    
-    # Valores faltantes
-    missing_data = df.isnull().sum()
-    missing_df = pd.DataFrame({
-        'Column': missing_data.index,
-        'Missing Values': missing_data.values,
-        'Percentage': (missing_data.values / len(df)) * 100
-    })
-    
-    # Duplicados
-    duplicates = df.duplicated().sum()
-    
-    # Estadísticas descriptivas
-    descriptive_stats = df.describe()
-    
-    # Matriz de correlación
-    corr_matrix = None
-    target_correlations = None
-    if len(numeric_cols) > 1:
-        corr_matrix = df[numeric_cols].corr()
-        if target_var in numeric_cols:
-            target_correlations = corr_matrix[target_var].abs().sort_values(ascending=False)
-    
-    return {
-        'dimensions': dimensions,
-        'numeric_cols': numeric_cols,
-        'categorical_cols': categorical_cols,
-        'missing_df': missing_df,
-        'duplicates': duplicates,
-        'descriptive_stats': descriptive_stats,
-        'corr_matrix': corr_matrix,
-        'target_correlations': target_correlations,
-        'numeric_cols_list': numeric_cols
-    }
+    """Realiza análisis exploratorio de datos y devuelve resultados estructurados"""
+    try:
+        # Calcular dimensiones
+        dimensions = {
+            'num_rows': df.shape[0],
+            'num_cols': df.shape[1]
+        }
+        
+        # Identificar tipos de variables
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
+        
+        # Valores faltantes
+        missing_data = df.isnull().sum()
+        missing_df = pd.DataFrame({
+            'Column': missing_data.index,
+            'Missing Values': missing_data.values,
+            'Percentage': (missing_data.values / len(df)) * 100
+        })
+        
+        # Duplicados
+        duplicates = df.duplicated().sum()
+        
+        # Estadísticas descriptivas
+        descriptive_stats = df.describe()
+        
+        # Matriz de correlación
+        corr_matrix = None
+        target_correlations = None
+        if len(numeric_cols) > 1:
+            corr_matrix = df[numeric_cols].corr()
+            if target_var in numeric_cols:
+                target_correlations = corr_matrix[target_var].abs().sort_values(ascending=False)
+        
+        return {
+            'dimensions': dimensions,
+            'numeric_cols': numeric_cols,
+            'categorical_cols': categorical_cols,
+            'missing_df': missing_df,
+            'duplicates': duplicates,
+            'descriptive_stats': descriptive_stats,
+            'corr_matrix': corr_matrix,
+            'target_correlations': target_correlations,
+            'numeric_cols_list': numeric_cols
+        }
+    except Exception as e:
+        st.error(f"Error performing EDA: {str(e)}")
+        # Return empty structure to prevent KeyError
+        return {
+            'dimensions': {'num_rows': 0, 'num_cols': 0},
+            'numeric_cols': [],
+            'categorical_cols': [],
+            'missing_df': pd.DataFrame(),
+            'duplicates': 0,
+            'descriptive_stats': pd.DataFrame(),
+            'corr_matrix': None,
+            'target_correlations': None,
+            'numeric_cols_list': []
+        }
 
 def display_eda_results(eda_results, target_var):
-    """Muestra los resultados del EDA en el área principal"""
+    """Muestra los resultados del EDA en el área principal con manejo seguro de errores"""
+    if not eda_results:
+        st.error("No EDA results available")
+        return
+    
     st.subheader(get_text("data_dimensions"))
     col1, col2 = st.columns(2)
-    col1.metric(get_text("num_rows"), eda_results['dimensions']['num_rows'])
-    col2.metric(get_text("num_cols"), eda_results['dimensions']['num_cols'])
+    col1.metric(get_text("num_rows"), eda_results.get('dimensions', {}).get('num_rows', 0))
+    col2.metric(get_text("num_cols"), eda_results.get('dimensions', {}).get('num_cols', 0))
     
+    # Numeric variables - with safe access
     st.subheader(get_text("numeric_vars"))
-    st.write(eda_results['numeric_cols'])
+    numeric_cols = eda_results.get('numeric_cols', [])
+    if numeric_cols:
+        st.write(numeric_cols)
+    else:
+        st.info(get_text("no_numeric_vars"))
     
+    # Categorical variables - with safe access
     st.subheader(get_text("categorical_vars"))
-    st.write(eda_results['categorical_vars'])
+    categorical_cols = eda_results.get('categorical_cols', [])
+    if categorical_cols:
+        st.write(categorical_cols)
+    else:
+        st.info(get_text("no_categorical_vars"))
     
+    # Missing values
     st.subheader(get_text("missing_values"))
-    st.dataframe(eda_results['missing_df'][eda_results['missing_df']['Missing Values'] > 0])
+    missing_df = eda_results.get('missing_df', pd.DataFrame())
+    if not missing_df.empty:
+        missing_data = missing_df[missing_df['Missing Values'] > 0]
+        if not missing_data.empty:
+            st.dataframe(missing_data)
+        else:
+            st.info("No missing values found")
+    else:
+        st.info("No missing values data available")
     
+    # Duplicates
     st.subheader(get_text("duplicates"))
-    st.metric(get_text("duplicates"), eda_results['duplicates'])
+    duplicates = eda_results.get('duplicates', 0)
+    st.metric(get_text("duplicates"), duplicates)
     
+    # Descriptive statistics
     st.subheader(get_text("descriptive_stats"))
-    st.dataframe(eda_results['descriptive_stats'])
+    descriptive_stats = eda_results.get('descriptive_stats', pd.DataFrame())
+    if not descriptive_stats.empty:
+        st.dataframe(descriptive_stats)
+    else:
+        st.info("No descriptive statistics available")
     
     # Visualizations
     st.subheader(get_text("distributions"))
     
     # Numeric variables distributions
-    if eda_results['numeric_cols']:
-        num_cols_to_show = min(5, len(eda_results['numeric_cols']))
+    numeric_cols_list = eda_results.get('numeric_cols', [])
+    if numeric_cols_list:
+        num_cols_to_show = min(5, len(numeric_cols_list))
         fig, axes = plt.subplots(1, num_cols_to_show, figsize=(20, 4))
         if num_cols_to_show == 1:
             axes = [axes]
         
-        for i, col in enumerate(eda_results['numeric_cols'][:num_cols_to_show]):
+        for i, col in enumerate(numeric_cols_list[:num_cols_to_show]):
             axes[i].hist(st.session_state.df_translated[col].dropna(), bins=30, alpha=0.7, color='blue')
             axes[i].set_title(f'Distribution of {col}')
             axes[i].set_xlabel(col)
@@ -460,33 +507,42 @@ def display_eda_results(eda_results, target_var):
         
         plt.tight_layout()
         st.pyplot(fig)
+    else:
+        st.info("No numeric variables to display distributions")
     
     # Correlation matrix
     st.subheader(get_text("correlation_matrix"))
-    if eda_results['corr_matrix'] is not None:
+    corr_matrix = eda_results.get('corr_matrix')
+    if corr_matrix is not None:
         fig, ax = plt.subplots(figsize=(10, 8))
-        sns.heatmap(eda_results['corr_matrix'], annot=True, cmap='coolwarm', center=0, ax=ax)
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0, ax=ax)
         st.pyplot(fig)
         
         # Top correlations with target
-        if eda_results['target_correlations'] is not None:
+        target_correlations = eda_results.get('target_correlations')
+        if target_correlations is not None:
             st.write(f"{get_text('top_correlations')} {target_var}:")
-            st.write(eda_results['target_correlations'][1:6])  # Top 5 excluding itself
+            st.write(target_correlations[1:6])  # Top 5 excluding itself
+    else:
+        st.info("Not enough numeric variables for correlation matrix")
     
     # Outlier detection
     st.subheader(get_text("outlier_detection"))
-    if eda_results['numeric_cols_list']:
-        num_cols_to_show = min(3, len(eda_results['numeric_cols_list']))
+    numeric_cols_list = eda_results.get('numeric_cols_list', [])
+    if numeric_cols_list:
+        num_cols_to_show = min(3, len(numeric_cols_list))
         fig, axes = plt.subplots(1, num_cols_to_show, figsize=(15, 5))
         if num_cols_to_show == 1:
             axes = [axes]
         
-        for i, col in enumerate(eda_results['numeric_cols_list'][:num_cols_to_show]):
+        for i, col in enumerate(numeric_cols_list[:num_cols_to_show]):
             axes[i].boxplot(st.session_state.df_translated[col].dropna())
             axes[i].set_title(f'Boxplot of {col}')
         
         plt.tight_layout()
         st.pyplot(fig)
+    else:
+        st.info("No numeric variables for outlier detection")
 
 def preprocess_data(df, target_var, options):
     df_processed = df.copy()
@@ -788,8 +844,7 @@ def main():
                             # Split data
                             X = df_processed.drop(columns=[st.session_state.target_var])
                             y = df_processed[st.session_state.target_var]
-                            
-                            X_temp, X_test, y_temp, y_test = train_test_split(
+                                            X_temp, X_test, y_temp, y_test = train_test_split(
                                 X, y, test_size=0.15, random_state=42
                             )
                             X_train, X_val, y_train, y_val = train_test_split(

@@ -300,7 +300,7 @@ translations = {
         "validation_set": "Ensemble de validation",
         "test_set": "Ensemble de test",
         "samples": "échantillons",
-        "training_times": "Temps d'Entraînement",
+        "training_times": "Tiempos d'Entraînement",
         "developed_with": "Développé avec Streamlit - Outil d'Estimation des Prix Immobiliers",
         "distributions": "Distributions",
         "top_correlations": "Principales corrélations avec",
@@ -407,7 +407,15 @@ def translate_dataframe(df, language):
     
     # Translate column names
     if language in column_translations:
-        df_translated = df_translated.rename(columns=column_translations[language])
+        # Create a mapping of original to translated column names
+        column_mapping = {}
+        for original_col in df.columns:
+            if original_col in column_translations[language]:
+                column_mapping[original_col] = column_translations[language][original_col]
+            else:
+                column_mapping[original_col] = original_col  # Keep original if no translation
+        
+        df_translated = df_translated.rename(columns=column_mapping)
     
     # Define which columns are likely to contain categorical data
     categorical_columns = df.select_dtypes(include=['object']).columns
@@ -419,6 +427,54 @@ def translate_dataframe(df, language):
         )
     
     return df_translated
+
+# Function to get original column names from translated ones
+def get_original_column_name(translated_name, language):
+    """Returns the original column name from a translated name"""
+    column_translations = {
+        "en": {
+            "longitude": "longitude",
+            "latitude": "latitude",
+            "housing_median_age": "housing_median_age",
+            "total_rooms": "total_rooms",
+            "total_bedrooms": "total_bedrooms",
+            "population": "population",
+            "households": "households",
+            "median_income": "median_income",
+            "median_house_value": "median_house_value",
+            "ocean_proximity": "ocean_proximity"
+        },
+        "es": {
+            "longitud": "longitude",
+            "latitud": "latitude",
+            "edad_media_vivienda": "housing_median_age",
+            "total_habitaciones": "total_rooms",
+            "total_dormitorios": "total_bedrooms",
+            "población": "population",
+            "hogares": "households",
+            "ingreso_medio": "median_income",
+            "valor_medio_vivienda": "median_house_value",
+            "proximidad_océano": "ocean_proximity"
+        },
+        "fr": {
+            "longitude": "longitude",
+            "latitude": "latitude",
+            "âge_médian_logement": "housing_median_age",
+            "total_pièces": "total_rooms",
+            "total_chambres": "total_bedrooms",
+            "population": "population",
+            "ménages": "households",
+            "revenu_médian": "median_income",
+            "valeur_médiane_logement": "median_house_value",
+            "proximité_océan": "ocean_proximity"
+        }
+    }
+    
+    if language in column_translations:
+        for original, translated in column_translations[language].items():
+            if translated == translated_name:
+                return original
+    return translated_name  # Return as is if no reverse mapping found
 
 # Function to handle null values interactively
 def handle_null_values(df):
@@ -580,6 +636,8 @@ def init_session_state():
         st.session_state.eda_results = None
     if 'best_model' not in st.session_state:
         st.session_state.best_model = None
+    if 'column_mapping' not in st.session_state:
+        st.session_state.column_mapping = {}
 
 # Helper function to load data
 def load_data(uploaded_file):
@@ -660,8 +718,8 @@ def display_eda_results(eda_results, target_var):
         st.error("No EDA results available")
         return
     
-    # Usar el dataframe traducido para todas las visualizaciones
-    df = st.session_state.df_translated
+    # Usar el dataframe original para EDA (no el traducido)
+    df = st.session_state.df
     
     st.subheader(get_text("data_dimensions"))
     col1, col2 = st.columns(2)
@@ -868,12 +926,10 @@ def train_neural_network(X_train, y_train, X_val, y_val):
     training_time = time.time() - start_time
     
     # Get feature importance using permutation importance (simplified)
-    # FIXED: Create a proper copy to avoid the KeyError
     baseline_mae = mean_absolute_error(y_train, model.predict(X_train, verbose=0).flatten())
     feature_importance = []
     
     for i in range(X_train.shape[1]):
-        # Create a proper copy of the column to shuffle
         col_name = X_train.columns[i]
         X_temp = X_train.copy()
         col_data = X_temp[col_name].values.copy()
@@ -917,12 +973,10 @@ def train_mlp(X_train, y_train, X_val, y_val):
     training_time = time.time() - start_time
     
     # Get feature importance
-    # FIXED: Create a proper copy to avoid the KeyError
     baseline_mae = mean_absolute_error(y_train, model.predict(X_train, verbose=0).flatten())
     feature_importance = []
     
     for i in range(X_train.shape[1]):
-        # Create a proper copy of the column to shuffle
         col_name = X_train.columns[i]
         X_temp = X_train.copy()
         col_data = X_temp[col_name].values.copy()
@@ -939,10 +993,8 @@ def train_mlp(X_train, y_train, X_val, y_val):
     return model, training_time, feature_importance_df, history
 
 def train_fuzzy_neural_network(X_train, y_train):
-    # This is a simplified implementation
     start_time = time.time()
     
-    # For the purpose of this demo, we'll return a simple linear model
     model = LinearRegression()
     model.fit(X_train, y_train)
     
@@ -959,10 +1011,8 @@ def train_fuzzy_neural_network(X_train, y_train):
 
 def evaluate_model(model, X_test, y_test, model_name):
     if hasattr(model, 'predict'):
-        # Scikit-learn model
         y_pred = model.predict(X_test)
     else:
-        # Keras model
         y_pred = model.predict(X_test, verbose=0).flatten()
     
     mae = mean_absolute_error(y_test, y_pred)
@@ -1004,10 +1054,8 @@ def main():
         # Update language if changed
         if selected_language != st.session_state.language:
             st.session_state.language = selected_language
-            # Update translated dataframe if data exists
             if st.session_state.df is not None:
                 st.session_state.df_translated = translate_dataframe(st.session_state.df, st.session_state.language)
-            # Rerun to update all text
             st.rerun()
         
         # Data upload
@@ -1039,8 +1087,8 @@ def main():
                     
                     # Null values handling
                     st.session_state.df = handle_null_values(st.session_state.df)
-                    # Update translated dataframe after null handling
-                    st.session_state.df_translated = translate_dataframe(st.session_state.df, st.session_state.language)
+                    if st.session_state.df is not None:
+                        st.session_state.df_translated = translate_dataframe(st.session_state.df, st.session_state.language)
                     
                     # Options for handling missing values (translated)
                     missing_options = [
@@ -1067,7 +1115,6 @@ def main():
                         with st.spinner(get_text("preprocess_data")):
                             df_processed = preprocess_data(st.session_state.df, st.session_state.target_var, preprocessing_options)
                             
-                            # Split data - CORREGIDA LA INDENTACIÓN
                             X = df_processed.drop(columns=[st.session_state.target_var])
                             y = df_processed[st.session_state.target_var]
                             
@@ -1075,7 +1122,7 @@ def main():
                                 X, y, test_size=0.15, random_state=42
                             )
                             X_train, X_val, y_train, y_val = train_test_split(
-                                X_temp, y_temp, test_size=0.1765, random_state=42  # 0.15/0.85 ≈ 0.1765
+                                X_temp, y_temp, test_size=0.1765, random_state=42
                             )
                             
                             st.session_state.X_train = X_train
@@ -1154,7 +1201,6 @@ def main():
                                     )
                                     st.session_state.evaluation_results[model_name] = metrics
                                 
-                                # Determine best model based on RMSE
                                 best_model = min(
                                     st.session_state.evaluation_results.items(), 
                                     key=lambda x: x[1]['RMSE']

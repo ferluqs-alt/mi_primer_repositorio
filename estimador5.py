@@ -1,13 +1,9 @@
-
 # app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import time
 import json
 import base64
@@ -18,11 +14,10 @@ warnings.filterwarnings('ignore')
 
 # Machine Learning
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.impute import SimpleImputer, KNNImputer
-from sklearn.feature_selection import RFE
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from scipy import stats
 
@@ -33,21 +28,11 @@ from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 
-# Fuzzy Logic
-import skfuzzy as fuzz
-from skfuzzy import control as ctrl
-
-# Statistical tests
-from statsmodels.sandbox.stats.runs import mcnemar
-from sklearn.metrics import matthews_corrcoef
-
 # Report generation
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
-from reportlab.lib.units import inch
-import matplotlib.backends.backend_pdf
 
 # Set page configuration
 st.set_page_config(
@@ -126,13 +111,6 @@ translations = {
         "mae": "Error Absoluto Medio (MAE)",
         "rmse": "Raíz del Error Cuadrático Medio (RMSE)",
         "r2": "Coeficiente de Determinación (R²)",
-        "confusion_matrix": "Matriz de Confusión",
-        "roc_curve": "Curva ROC",
-        "auc": "Curva AUC",
-        "mcc": "Coeficiente de Matthews (MCC)",
-        "mcnemar_test": "Prueba de McNemar",
-        "theil_coefficient": "Coeficiente de Theil",
-        "diebold_mariano": "Prueba de Diebold-Mariano"
     },
     "en": {
         "title": "Housing Price Estimator",
@@ -167,13 +145,6 @@ translations = {
         "mae": "Mean Absolute Error (MAE)",
         "rmse": "Root Mean Squared Error (RMSE)",
         "r2": "Coefficient of Determination (R²)",
-        "confusion_matrix": "Confusion Matrix",
-        "roc_curve": "ROC Curve",
-        "auc": "AUC Curve",
-        "mcc": "Matthews Correlation Coefficient (MCC)",
-        "mcnemar_test": "McNemar Test",
-        "theil_coefficient": "Theil Coefficient",
-        "diebold_mariano": "Diebold-Mariano Test"
     },
     "fr": {
         "title": "Estimateur de Prix Immobiliers",
@@ -208,13 +179,6 @@ translations = {
         "mae": "Erreur Absolue Moyenne (MAE)",
         "rmse": "Racine de l'Erreur Quadratique Moyenne (RMSE)",
         "r2": "Coefficient de Détermination (R²)",
-        "confusion_matrix": "Matrice de Confusion",
-        "roc_curve": "Courbe ROC",
-        "auc": "Courbe AUC",
-        "mcc": "Coefficient de Corrélation de Matthews (MCC)",
-        "mcnemar_test": "Test de McNemar",
-        "theil_coefficient": "Coefficient de Theil",
-        "diebold_mariano": "Test de Diebold-Mariano"
     }
 }
 
@@ -245,6 +209,10 @@ if 'y_val' not in st.session_state:
     st.session_state.y_val = None
 if 'y_test' not in st.session_state:
     st.session_state.y_test = None
+if 'model_results' not in st.session_state:
+    st.session_state.model_results = {}
+if 'evaluation_results' not in st.session_state:
+    st.session_state.evaluation_results = {}
 
 # Helper functions
 def t(key):
@@ -449,7 +417,7 @@ def train_neural_network(X_train, y_train, X_val, y_val):
     
     for i in range(X_train.shape[1]):
         X_temp = X_train.copy()
-        np.random.shuffle(X_temp[:, i])
+        np.random.shuffle(X_temp.iloc[:, i])
         mae_score = mean_absolute_error(y_train, model.predict(X_temp, verbose=0).flatten())
         importance = mae_score - baseline_mae
         feature_importance.append((X_train.columns[i], importance))
@@ -492,7 +460,7 @@ def train_mlp(X_train, y_train, X_val, y_val):
     
     for i in range(X_train.shape[1]):
         X_temp = X_train.copy()
-        np.random.shuffle(X_temp[:, i])
+        np.random.shuffle(X_temp.iloc[:, i])
         mae_score = mean_absolute_error(y_train, model.predict(X_temp, verbose=0).flatten())
         importance = mae_score - baseline_mae
         feature_importance.append((X_train.columns[i], importance))
@@ -503,42 +471,14 @@ def train_mlp(X_train, y_train, X_val, y_val):
     return model, training_time, feature_importance_df, history
 
 def train_fuzzy_neural_network(X_train, y_train):
-    # This is a simplified implementation of a fuzzy neural network
-    # In practice, this would be more complex
+    # This is a simplified implementation
     start_time = time.time()
     
-    # Create fuzzy variables
-    fuzzy_vars = []
-    for i, col in enumerate(X_train.columns):
-        var = ctrl.Antecedent(np.arange(X_train[col].min(), X_train[col].max(), 0.1), col)
-        var.automf(3)  # Create 3 membership functions
-        fuzzy_vars.append(var)
-    
-    # Create output variable
-    output = ctrl.Consequent(np.arange(y_train.min(), y_train.max(), 0.1), 'output', 'centroid')
-    output.automf(3)
-    
-    # Create rules (simplified)
-    rules = []
-    for i in range(min(10, len(X_train))):  # Limit rules for simplicity
-        rule_conditions = []
-        for j, col in enumerate(X_train.columns):
-            rule_conditions.append(fuzzy_vars[j]['average'])
-        
-        rule = ctrl.Rule(rule_conditions, output['average'])
-        rules.append(rule)
-    
-    # Create control system
-    system = ctrl.ControlSystem(rules)
-    sim = ctrl.ControlSystemSimulation(system)
-    
-    # Train the system (simplified)
-    training_time = time.time() - start_time
-    
     # For the purpose of this demo, we'll return a simple linear model
-    # In a real implementation, this would be much more complex
     model = LinearRegression()
     model.fit(X_train, y_train)
+    
+    training_time = time.time() - start_time
     
     # Feature importance (using linear model as proxy)
     importance = np.abs(model.coef_)
@@ -550,8 +490,6 @@ def train_fuzzy_neural_network(X_train, y_train):
     return model, training_time, feature_importance, {}
 
 def evaluate_model(model, X_test, y_test, model_name):
-    y_pred = model.predict(X_test)
-    
     if hasattr(model, 'predict'):
         # Scikit-learn model
         y_pred = model.predict(X_test)
@@ -586,10 +524,6 @@ def generate_pdf_report(df, eda_results, models, evaluation_results, best_model)
     table = Table(data)
     story.append(table)
     story.append(Spacer(1, 12))
-    
-    # EDA results
-    story.append(Paragraph("Exploratory Data Analysis", styles['Heading2']))
-    # Add EDA results here...
     
     # Model comparison
     story.append(Paragraph("Model Comparison", styles['Heading2']))
@@ -687,3 +621,163 @@ with st.sidebar:
                 if st.session_state.preprocessing_done:
                     st.header(t('modeling'))
                     if st.button(t('train_models')):
+                        with st.spinner('Training models...'):
+                            # Linear Regression
+                            lr_model, lr_time, lr_importance = train_linear_regression(
+                                st.session_state.X_train, st.session_state.y_train
+                            )
+                            st.session_state.models['Linear Regression'] = lr_model
+                            st.session_state.model_results['Linear Regression'] = {
+                                'training_time': lr_time,
+                                'feature_importance': lr_importance
+                            }
+                            
+                            # Neural Network
+                            nn_model, nn_time, nn_importance, nn_history = train_neural_network(
+                                st.session_state.X_train, st.session_state.y_train,
+                                st.session_state.X_val, st.session_state.y_val
+                            )
+                            st.session_state.models['Neural Network'] = nn_model
+                            st.session_state.model_results['Neural Network'] = {
+                                'training_time': nn_time,
+                                'feature_importance': nn_importance,
+                                'history': nn_history
+                            }
+                            
+                            # MLP
+                            mlp_model, mlp_time, mlp_importance, mlp_history = train_mlp(
+                                st.session_state.X_train, st.session_state.y_train,
+                                st.session_state.X_val, st.session_state.y_val
+                            )
+                            st.session_state.models['MLP'] = mlp_model
+                            st.session_state.model_results['MLP'] = {
+                                'training_time': mlp_time,
+                                'feature_importance': mlp_importance,
+                                'history': mlp_history
+                            }
+                            
+                            # Fuzzy Neural Network
+                            fuzzy_model, fuzzy_time, fuzzy_importance, _ = train_fuzzy_neural_network(
+                                st.session_state.X_train, st.session_state.y_train
+                            )
+                            st.session_state.models['Fuzzy Neural Network'] = fuzzy_model
+                            st.session_state.model_results['Fuzzy Neural Network'] = {
+                                'training_time': fuzzy_time,
+                                'feature_importance': fuzzy_importance
+                            }
+                            
+                            st.session_state.models_trained = True
+                            st.success('Models trained successfully!')
+                
+                # Model evaluation
+                if st.session_state.models_trained:
+                    st.header(t('evaluation'))
+                    if st.button(t('evaluate_models')):
+                        with st.spinner('Evaluating models...'):
+                            for model_name, model in st.session_state.models.items():
+                                metrics = evaluate_model(
+                                    model, 
+                                    st.session_state.X_test, 
+                                    st.session_state.y_test,
+                                    model_name
+                                )
+                                st.session_state.evaluation_results[model_name] = metrics
+                            
+                            # Determine best model based on RMSE
+                            best_model = min(
+                                st.session_state.evaluation_results.items(), 
+                                key=lambda x: x[1]['RMSE']
+                            )[0]
+                            st.session_state.best_model = best_model
+                            st.success('Models evaluated successfully!')
+                
+                # Report generation
+                if st.session_state.models_trained and st.session_state.evaluation_results:
+                    st.header(t('report'))
+                    if st.button(t('generate_report')):
+                        with st.spinner('Generating report...'):
+                            report_bytes = generate_pdf_report(
+                                df,
+                                st.session_state.eda_done,
+                                st.session_state.models,
+                                st.session_state.evaluation_results,
+                                st.session_state.best_model
+                            )
+                            
+                            st.download_button(
+                                label=t('download_report'),
+                                data=report_bytes,
+                                file_name=f"housing_price_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                                mime="application/pdf"
+                            )
+
+# Main content area
+st.markdown(f"<h1 class='main-header'>{t('title')}</h1>", unsafe_allow_html=True)
+
+if st.session_state.df is not None:
+    df = st.session_state.df
+    
+    # Show dataset preview
+    st.subheader("Dataset Preview")
+    st.dataframe(df.head())
+    
+    # Show EDA results if available
+    if st.session_state.eda_done:
+        st.subheader(t('eda'))
+        st.success("EDA completed successfully!")
+    
+    # Show preprocessing status
+    if st.session_state.preprocessing_done:
+        st.subheader(t('preprocessing'))
+        st.success("Data preprocessing completed successfully!")
+        st.write(f"Training set: {st.session_state.X_train.shape[0]} samples")
+        st.write(f"Validation set: {st.session_state.X_val.shape[0]} samples")
+        st.write(f"Test set: {st.session_state.X_test.shape[0]} samples")
+    
+    # Show model training results
+    if st.session_state.models_trained:
+        st.subheader(t('modeling'))
+        st.success("Models trained successfully!")
+        
+        # Display training times
+        st.write("Training Times:")
+        training_times = {
+            model: results['training_time'] 
+            for model, results in st.session_state.model_results.items()
+        }
+        st.bar_chart(training_times)
+    
+    # Show evaluation results
+    if st.session_state.evaluation_results:
+        st.subheader(t('evaluation'))
+        st.success("Models evaluated successfully!")
+        
+        # Display evaluation metrics
+        evaluation_df = pd.DataFrame(st.session_state.evaluation_results).T
+        st.dataframe(evaluation_df)
+        
+        # Show best model
+        st.subheader(t('best_model'))
+        st.success(f"The best model is: {st.session_state.best_model}")
+        
+        # Show feature importance for the best model
+        st.subheader(t('important_features'))
+        best_model_importance = st.session_state.model_results[st.session_state.best_model]['feature_importance']
+        st.dataframe(best_model_importance.head(10))
+        
+        # Plot feature importance
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.barh(
+            best_model_importance['Feature'].head(10),
+            best_model_importance['Importance'].head(10)
+        )
+        ax.set_xlabel('Importance')
+        ax.set_title('Top 10 Feature Importance')
+        st.pyplot(fig)
+
+else:
+    st.info("Please upload a dataset to get started.")
+
+# Footer
+st.markdown("---")
+st.markdown("Developed with Streamlit - Housing Price Estimator Tool")

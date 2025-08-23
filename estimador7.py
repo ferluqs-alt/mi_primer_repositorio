@@ -181,7 +181,7 @@ translations = {
         "select_language": "Seleccionar Idioma",
         "dataset_preview": "Vista Previa del Dataset",
         "handle_missing": "Manejar valores faltantes",
-        "remove_duplicates": "Eliminar duplicados",
+        "remove_duplicates": "Eeliminar duplicados",
         "handle_outliers": "Manejar valores atípicos (Z-score)",
         "encode_categorical": "Codificar variables categóricas",
         "handle_multicollinearity": "Manejar multicolinealidad (VIF)",
@@ -841,10 +841,11 @@ def main():
                         with st.spinner(get_text("preprocess_data")):
                             df_processed = preprocess_data(st.session_state.df, st.session_state.target_var, preprocessing_options)
                             
-                            # Split data
+                            # Split data - CORREGIDA LA INDENTACIÓN
                             X = df_processed.drop(columns=[st.session_state.target_var])
                             y = df_processed[st.session_state.target_var]
-                                            X_temp, X_test, y_temp, y_test = train_test_split(
+                            
+                            X_temp, X_test, y_temp, y_test = train_test_split(
                                 X, y, test_size=0.15, random_state=42
                             )
                             X_train, X_val, y_train, y_val = train_test_split(

@@ -335,11 +335,12 @@ def main():
                 outlier_percent = (outlier_count / len(data)) * 100
                 
                 if outlier_count > 0:
-                    outliers_df = outliers_df.append({
-                        'Variable': col,
-                        'Número de Outliers': outlier_count,
-                        'Porcentaje': f"{outlier_percent:.2f}%"
-                    }, ignore_index=True)
+                    new_row = pd.DataFrame({
+                        'Variable': [col],
+                        'Número de Outliers': [outlier_count],
+                        'Porcentaje': [f"{outlier_percent:.2f}%"]
+                    })
+                    outliers_df = pd.concat([outliers_df, new_row], ignore_index=True)
             
             if len(outliers_df) > 0:
                 st.dataframe(outliers_df)
@@ -353,12 +354,13 @@ def main():
             for col in numeric_cols:
                 stat, p_value = kstest(data[col].dropna(), 'norm')
                 is_normal = "Sí" if p_value > 0.05 else "No"
-                normality_results = normality_results.append({
-                    'Variable': col,
-                    'Estadístico': f"{stat:.4f}",
-                    'p-valor': f"{p_value:.4f}",
-                    'Distribución Normal': is_normal
-                }, ignore_index=True)
+                new_row = pd.DataFrame({
+                    'Variable': [col],
+                    'Estadístico': [f"{stat:.4f}"],
+                    'p-valor': [f"{p_value:.4f}"],
+                    'Distribución Normal': [is_normal]
+                })
+                normality_results = pd.concat([normality_results, new_row], ignore_index=True)
             
             st.dataframe(normality_results)
             
@@ -639,13 +641,14 @@ def main():
                     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
                     r2 = r2_score(y_test, y_pred)
                     
-                    performance_df = performance_df.append({
-                        "Modelo": model_name,
-                        "MAE": f"${mae:.2f}",
-                        "RMSE": f"${rmse:.2f}",
-                        "R²": f"{r2:.4f}",
-                        "Tiempo de Entrenamiento (s)": f"{training_times[model_name]:.2f}"
-                    }, ignore_index=True)
+                    new_row = pd.DataFrame({
+                        "Modelo": [model_name],
+                        "MAE": [f"${mae:.2f}"],
+                        "RMSE": [f"${rmse:.2f}"],
+                        "R²": [f"{r2:.4f}"],
+                        "Tiempo de Entrenamiento (s)": [f"{training_times[model_name]:.2f}"]
+                    })
+                    performance_df = pd.concat([performance_df, new_row], ignore_index=True)
                 
                 st.dataframe(performance_df)
                 

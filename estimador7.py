@@ -1,4 +1,3 @@
-#########Codigo que cambia cualquier etiqueta, titulo o boton al idioma seleccionado##############
 # app.py
 import streamlit as st
 import pandas as pd
@@ -125,6 +124,12 @@ translations = {
         "developed_with": "Developed with Streamlit - Housing Price Estimator Tool",
         "distributions": "Distributions",
         "top_correlations": "Top correlations with",
+        "completed_successfully": "completed successfully!",
+        "Drop rows": "Drop rows",
+        "Mean imputation": "Mean imputation",
+        "KNN imputation": "KNN imputation",
+        "One-Hot Encoding": "One-Hot Encoding",
+        "Label Encoding": "Label Encoding",
         
         # Data translations (categorical values)
         "NEAR BAY": "NEAR BAY",
@@ -188,6 +193,12 @@ translations = {
         "developed_with": "Desarrollado con Streamlit - Herramienta de Estimación de Precios de Viviendas",
         "distributions": "Distribuciones",
         "top_correlations": "Principales correlaciones con",
+        "completed_successfully": "completado exitosamente!",
+        "Drop rows": "Eliminar filas",
+        "Mean imputation": "Imputación por media",
+        "KNN imputation": "Imputación KNN",
+        "One-Hot Encoding": "Codificación One-Hot",
+        "Label Encoding": "Codificación de Etiquetas",
         
         # Data translations (categorical values)
         "NEAR BAY": "CERCA DE LA BAHÍA",
@@ -251,6 +262,12 @@ translations = {
         "developed_with": "Développé avec Streamlit - Outil d'Estimation des Prix Immobiliers",
         "distributions": "Distributions",
         "top_correlations": "Principales corrélations avec",
+        "completed_successfully": "terminé avec succès!",
+        "Drop rows": "Supprimer les lignes",
+        "Mean imputation": "Imputation par la moyenne",
+        "KNN imputation": "Imputation KNN",
+        "One-Hot Encoding": "Encodage One-Hot",
+        "Label Encoding": "Encodage d'étiquettes",
         
         # Data translations (categorical values)
         "NEAR BAY": "PRÈS DE LA BAIE",
@@ -272,7 +289,7 @@ def get_text(key):
     lang = st.session_state.language
     if lang in translations and key in translations[lang]:
         return translations[lang][key]
-    elif key in translations["en"]:  # Fallback to English
+    elif "en" in translations and key in translations["en"]:  # Fallback to English
         return translations["en"][key]
     else:
         return key  # Return the key itself if not found
@@ -280,6 +297,9 @@ def get_text(key):
 # Function to translate dataframe categorical values
 def translate_dataframe(df, language):
     """Translates categorical values in the dataframe based on selected language"""
+    if df is None:
+        return None
+        
     df_translated = df.copy()
     
     # Define which columns are likely to contain categorical data
@@ -335,6 +355,10 @@ def init_session_state():
         st.session_state.show_modeling = False
     if 'show_evaluation' not in st.session_state:
         st.session_state.show_evaluation = False
+    if 'eda_results' not in st.session_state:
+        st.session_state.eda_results = None
+    if 'best_model' not in st.session_state:
+        st.session_state.best_model = None
 
 # Helper function to load data
 def load_data(uploaded_file):
@@ -407,7 +431,7 @@ def display_eda_results(eda_results, target_var):
     st.write(eda_results['numeric_cols'])
     
     st.subheader(get_text("categorical_vars"))
-    st.write(eda_results['categorical_cols'])
+    st.write(eda_results['categorical_vars'])
     
     st.subheader(get_text("missing_values"))
     st.dataframe(eda_results['missing_df'][eda_results['missing_df']['Missing Values'] > 0])
@@ -567,15 +591,21 @@ def train_neural_network(X_train, y_train, X_val, y_val):
     training_time = time.time() - start_time
     
     # Get feature importance using permutation importance (simplified)
+    # FIXED: Create a proper copy to avoid the KeyError
     baseline_mae = mean_absolute_error(y_train, model.predict(X_train, verbose=0).flatten())
     feature_importance = []
     
     for i in range(X_train.shape[1]):
+        # Create a proper copy of the column to shuffle
+        col_name = X_train.columns[i]
         X_temp = X_train.copy()
-        np.random.shuffle(X_temp.iloc[:, i])
+        col_data = X_temp[col_name].values.copy()
+        np.random.shuffle(col_data)
+        X_temp[col_name] = col_data
+        
         mae_score = mean_absolute_error(y_train, model.predict(X_temp, verbose=0).flatten())
         importance = mae_score - baseline_mae
-        feature_importance.append((X_train.columns[i], importance))
+        feature_importance.append((col_name, importance))
     
     feature_importance.sort(key=lambda x: x[1], reverse=True)
     feature_importance_df = pd.DataFrame(feature_importance, columns=['Feature', 'Importance'])
@@ -610,15 +640,21 @@ def train_mlp(X_train, y_train, X_val, y_val):
     training_time = time.time() - start_time
     
     # Get feature importance
+    # FIXED: Create a proper copy to avoid the KeyError
     baseline_mae = mean_absolute_error(y_train, model.predict(X_train, verbose=0).flatten())
     feature_importance = []
     
     for i in range(X_train.shape[1]):
+        # Create a proper copy of the column to shuffle
+        col_name = X_train.columns[i]
         X_temp = X_train.copy()
-        np.random.shuffle(X_temp.iloc[:, i])
+        col_data = X_temp[col_name].values.copy()
+        np.random.shuffle(col_data)
+        X_temp[col_name] = col_data
+        
         mae_score = mean_absolute_error(y_train, model.predict(X_temp, verbose=0).flatten())
         importance = mae_score - baseline_mae
-        feature_importance.append((X_train.columns[i], importance))
+        feature_importance.append((col_name, importance))
     
     feature_importance.sort(key=lambda x: x[1], reverse=True)
     feature_importance_df = pd.DataFrame(feature_importance, columns=['Feature', 'Importance'])

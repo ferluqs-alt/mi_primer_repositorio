@@ -143,6 +143,26 @@ translations = {
         "NO": "NO",
         "TRUE": "TRUE",
         "FALSE": "FALSE",
+        
+        # New translations for null handling
+        "null_handling_header": "Null Values Handling",
+        "show_null_summary": "Show null values summary",
+        "null_summary_title": "Null Values Summary",
+        "select_null_strategy": "Select Strategy for Null Values",
+        "strategy_for": "Strategy for",
+        "drop_na": "Drop rows with nulls",
+        "mean_imputation": "Fill with mean",
+        "median_imputation": "Fill with median",
+        "mode_imputation": "Fill with mode",
+        "constant_imputation": "Fill with constant value",
+        "unknown_imputation": "Fill with 'Unknown'",
+        "interpolation": "Interpolate",
+        "constant_value_for": "Constant value for",
+        "apply_null_strategies": "Apply Null Strategies",
+        "nulls_removed_success": "Successfully removed",
+        "null_values": "null values",
+        "no_null_values": "No null values found in the dataset.",
+        "unknown_value": "Unknown"
     },
     "es": {
         # UI Elements
@@ -181,7 +201,7 @@ translations = {
         "select_language": "Seleccionar Idioma",
         "dataset_preview": "Vista Previa del Dataset",
         "handle_missing": "Manejar valores faltantes",
-        "remove_duplicates": "Eeliminar duplicados",
+        "remove_duplicates": "Eliminar duplicados",
         "handle_outliers": "Manejar valores atípicos (Z-score)",
         "encode_categorical": "Codificar variables categóricas",
         "handle_multicollinearity": "Manejar multicolinealidad (VIF)",
@@ -213,6 +233,26 @@ translations = {
         "NO": "NO",
         "TRUE": "VERDADERO",
         "FALSE": "FALSO",
+        
+        # New translations for null handling
+        "null_handling_header": "Manejo de Valores Nulos",
+        "show_null_summary": "Mostrar resumen de valores nulos",
+        "null_summary_title": "Resumen de Valores Nulos",
+        "select_null_strategy": "Seleccionar Estrategia para Valores Nulos",
+        "strategy_for": "Estrategia para",
+        "drop_na": "Eliminar filas con nulos",
+        "mean_imputation": "Rellenar con la media",
+        "median_imputation": "Rellenar con la mediana",
+        "mode_imputation": "Rellenar con la moda",
+        "constant_imputation": "Rellenar con valor constante",
+        "unknown_imputation": "Rellenar con 'Desconocido'",
+        "interpolation": "Interpolar",
+        "constant_value_for": "Valor constante para",
+        "apply_null_strategies": "Aplicar Estrategias para Nulos",
+        "nulls_removed_success": "Se eliminaron exitosamente",
+        "null_values": "valores nulos",
+        "no_null_values": "No se encontraron valores nulos en el dataset.",
+        "unknown_value": "Desconocido"
     },
     "fr": {
         # UI Elements
@@ -283,6 +323,26 @@ translations = {
         "NO": "NON",
         "TRUE": "VRAI",
         "FALSE": "FAUX",
+        
+        # New translations for null handling
+        "null_handling_header": "Gestion des Valeurs Manquantes",
+        "show_null_summary": "Afficher le résumé des valeurs manquantes",
+        "null_summary_title": "Résumé des Valeurs Manquantes",
+        "select_null_strategy": "Sélectionner une Stratégie pour les Valeurs Manquantes",
+        "strategy_for": "Stratégie pour",
+        "drop_na": "Supprimer les lignes avec des valeurs manquantes",
+        "mean_imputation": "Remplir avec la moyenne",
+        "median_imputation": "Remplir avec la médiane",
+        "mode_imputation": "Remplir avec le mode",
+        "constant_imputation": "Remplir avec une valeur constante",
+        "unknown_imputation": "Remplir avec 'Inconnu'",
+        "interpolation": "Interpolation",
+        "constant_value_for": "Valeur constante pour",
+        "apply_null_strategies": "Appliquer les Stratégies pour Valeurs Manquantes",
+        "nulls_removed_success": "Supprimé avec succès",
+        "null_values": "valeurs manquantes",
+        "no_null_values": "Aucune valeur manquante trouvée dans le dataset.",
+        "unknown_value": "Inconnu"
     }
 }
 
@@ -297,13 +357,57 @@ def get_text(key):
     else:
         return key  # Return the key itself if not found
 
-# Function to translate dataframe categorical values
+# Function to translate dataframe categorical values and column names
 def translate_dataframe(df, language):
-    """Translates categorical values in the dataframe based on selected language"""
+    """Translates categorical values and column names in the dataframe based on selected language"""
     if df is None:
         return None
         
     df_translated = df.copy()
+    
+    # Dictionary for column name translations
+    column_translations = {
+        "en": {
+            "longitude": "longitude",
+            "latitude": "latitude",
+            "housing_median_age": "housing_median_age",
+            "total_rooms": "total_rooms",
+            "total_bedrooms": "total_bedrooms",
+            "population": "population",
+            "households": "households",
+            "median_income": "median_income",
+            "median_house_value": "median_house_value",
+            "ocean_proximity": "ocean_proximity"
+        },
+        "es": {
+            "longitude": "longitud",
+            "latitude": "latitud",
+            "housing_median_age": "edad_media_vivienda",
+            "total_rooms": "total_habitaciones",
+            "total_bedrooms": "total_dormitorios",
+            "population": "población",
+            "households": "hogares",
+            "median_income": "ingreso_medio",
+            "median_house_value": "valor_medio_vivienda",
+            "ocean_proximity": "proximidad_océano"
+        },
+        "fr": {
+            "longitude": "longitude",
+            "latitude": "latitude",
+            "housing_median_age": "âge_médian_logement",
+            "total_rooms": "total_pièces",
+            "total_bedrooms": "total_chambres",
+            "population": "population",
+            "households": "ménages",
+            "median_income": "revenu_médian",
+            "median_house_value": "valeur_médiane_logement",
+            "ocean_proximity": "proximité_océan"
+        }
+    }
+    
+    # Translate column names
+    if language in column_translations:
+        df_translated = df_translated.rename(columns=column_translations[language])
     
     # Define which columns are likely to contain categorical data
     categorical_columns = df.select_dtypes(include=['object']).columns
@@ -315,6 +419,120 @@ def translate_dataframe(df, language):
         )
     
     return df_translated
+
+# Function to handle null values interactively
+def handle_null_values(df):
+    """Interfaz para manejar valores nulos de forma interactiva"""
+    if df is None:
+        return df
+        
+    st.header(get_text("null_handling_header"))
+    
+    # Mostrar resumen de valores nulos
+    if st.checkbox(get_text("show_null_summary"), value=True):
+        null_summary = df.isnull().sum()
+        null_summary = null_summary[null_summary > 0]
+        
+        if len(null_summary) > 0:
+            st.subheader(get_text("null_summary_title"))
+            st.dataframe(pd.DataFrame({
+                'Column': null_summary.index,
+                'Null Count': null_summary.values,
+                'Percentage': (null_summary.values / len(df) * 100).round(2)
+            }))
+            
+            # Selector de estrategia por columna
+            st.subheader(get_text("select_null_strategy"))
+            strategies = {}
+            
+            for col in null_summary.index:
+                st.markdown(f"**{col}** ({null_summary[col]} nulos)")
+                
+                col_type = df[col].dtype
+                if np.issubdtype(col_type, np.number):
+                    # Columnas numéricas
+                    strategy = st.selectbox(
+                        f"{get_text('strategy_for')} {col}",
+                        options=[
+                            get_text("drop_na"),
+                            get_text("mean_imputation"),
+                            get_text("median_imputation"),
+                            get_text("constant_imputation"),
+                            get_text("interpolation")
+                        ],
+                        key=f"strategy_{col}"
+                    )
+                    
+                    strategies[col] = {
+                        'type': 'numeric',
+                        'strategy': strategy
+                    }
+                    
+                    if strategy == get_text("constant_imputation"):
+                        constant_value = st.number_input(
+                            f"{get_text('constant_value_for')} {col}",
+                            value=0.0,
+                            key=f"constant_{col}"
+                        )
+                        strategies[col]['constant'] = constant_value
+                else:
+                    # Columnas categóricas
+                    strategy = st.selectbox(
+                        f"{get_text('strategy_for')} {col}",
+                        options=[
+                            get_text("drop_na"),
+                            get_text("mode_imputation"),
+                            get_text("constant_imputation"),
+                            get_text("unknown_imputation")
+                        ],
+                        key=f"strategy_{col}"
+                    )
+                    
+                    strategies[col] = {
+                        'type': 'categorical',
+                        'strategy': strategy
+                    }
+                    
+                    if strategy == get_text("constant_imputation"):
+                        constant_value = st.text_input(
+                            f"{get_text('constant_value_for')} {col}",
+                            value="",
+                            key=f"constant_{col}"
+                        )
+                        strategies[col]['constant'] = constant_value
+            
+            # Botón para aplicar las estrategias
+            if st.button(get_text("apply_null_strategies")):
+                df_processed = df.copy()
+                total_nulls_before = df_processed.isnull().sum().sum()
+                
+                for col, strategy_info in strategies.items():
+                    strategy = strategy_info['strategy']
+                    
+                    if strategy == get_text("drop_na"):
+                        df_processed = df_processed.dropna(subset=[col])
+                    elif strategy == get_text("mean_imputation"):
+                        df_processed[col] = df_processed[col].fillna(df_processed[col].mean())
+                    elif strategy == get_text("median_imputation"):
+                        df_processed[col] = df_processed[col].fillna(df_processed[col].median())
+                    elif strategy == get_text("mode_imputation"):
+                        df_processed[col] = df_processed[col].fillna(df_processed[col].mode()[0])
+                    elif strategy == get_text("constant_imputation"):
+                        df_processed[col] = df_processed[col].fillna(strategy_info.get('constant', 0))
+                    elif strategy == get_text("unknown_imputation"):
+                        df_processed[col] = df_processed[col].fillna(get_text("unknown_value"))
+                    elif strategy == get_text("interpolation"):
+                        df_processed[col] = df_processed[col].interpolate()
+                
+                total_nulls_after = df_processed.isnull().sum().sum()
+                nulls_removed = total_nulls_before - total_nulls_after
+                
+                st.success(f"{get_text('nulls_removed_success')} {nulls_removed} {get_text('null_values')}.")
+                return df_processed
+        else:
+            st.info(get_text("no_null_values"))
+    
+    return df
 
 # Initialize session state
 def init_session_state():
@@ -442,6 +660,9 @@ def display_eda_results(eda_results, target_var):
         st.error("No EDA results available")
         return
     
+    # Usar el dataframe traducido para todas las visualizaciones
+    df = st.session_state.df_translated
+    
     st.subheader(get_text("data_dimensions"))
     col1, col2 = st.columns(2)
     col1.metric(get_text("num_rows"), eda_results.get('dimensions', {}).get('num_rows', 0))
@@ -500,7 +721,7 @@ def display_eda_results(eda_results, target_var):
             axes = [axes]
         
         for i, col in enumerate(numeric_cols_list[:num_cols_to_show]):
-            axes[i].hist(st.session_state.df_translated[col].dropna(), bins=30, alpha=0.7, color='blue')
+            axes[i].hist(df[col].dropna(), bins=30, alpha=0.7, color='blue')
             axes[i].set_title(f'Distribution of {col}')
             axes[i].set_xlabel(col)
             axes[i].set_ylabel('Frequency')
@@ -536,7 +757,7 @@ def display_eda_results(eda_results, target_var):
             axes = [axes]
         
         for i, col in enumerate(numeric_cols_list[:num_cols_to_show]):
-            axes[i].boxplot(st.session_state.df_translated[col].dropna())
+            axes[i].boxplot(df[col].dropna())
             axes[i].set_title(f'Boxplot of {col}')
         
         plt.tight_layout()
@@ -815,6 +1036,11 @@ def main():
                     
                     # Preprocessing options
                     st.header(get_text("preprocessing"))
+                    
+                    # Null values handling
+                    st.session_state.df = handle_null_values(st.session_state.df)
+                    # Update translated dataframe after null handling
+                    st.session_state.df_translated = translate_dataframe(st.session_state.df, st.session_state.language)
                     
                     # Options for handling missing values (translated)
                     missing_options = [

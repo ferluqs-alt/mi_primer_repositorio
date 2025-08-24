@@ -34,7 +34,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Internacionalización (i18n) - CORREGIDO
+# Internacionalización (i18n)
 language_dict = {
     "ES": {
         "title": "Estimador de Precios de Viviendas",
@@ -62,7 +62,7 @@ language_dict = {
         "correlation_matrix": "Matriz de Correlación",
         "correlation_heatmap": "Mapa de Calor de Correlaciones",
         "strongest_correlations": "Correlaciones más Fuertes con el Precio",
-        "multicolinearity": "Análisis de Multicolinealidad",  # CORREGIDO: multicolineality -> multicolinearity
+        "multicolinearity": "Análisis de Multicolinealidad",
         "vif": "Factor de Inflación de Varianza (VIF)",
         "preprocessing_options": "Opciones de Preprocesamiento",
         "imputation": "Imputación de Valores Faltantes",
@@ -102,7 +102,7 @@ language_dict = {
         "correlation_matrix": "Correlation Matrix",
         "correlation_heatmap": "Correlation Heatmap",
         "strongest_correlations": "Strongest Correlations with Price",
-        "multicolinearity": "Multicollinearity Analysis",  # CORREGIDO
+        "multicolinearity": "Multicollinearity Analysis",
         "vif": "Variance Inflation Factor (VIF)",
         "preprocessing_options": "Preprocessing Options",
         "imputation": "Missing Value Imputation",
@@ -142,7 +142,7 @@ language_dict = {
         "correlation_matrix": "Matrice de Corrélation",
         "correlation_heatmap": "Carte de Chaleur des Corrélations",
         "strongest_correlations": "Corrélations les Plus Fortes avec le Prix",
-        "multicolinearity": "Analyse de Multicolinéarité",  # CORREGIDO
+        "multicolinearity": "Analyse de Multicolinéarité",
         "vif": "Facteur d'Inflation de la Variance (VIF)",
         "preprocessing_options": "Options de Prétraitement",
         "imputation": "Imputation des Valeurs Manquantes",
@@ -182,13 +182,13 @@ if 'y_val' not in st.session_state:
 if 'y_test' not in st.session_state:
     st.session_state.y_test = None
 
-# Función para obtener texto según el idioma - CON MEJOR MANEJO DE ERRORES
+# Función para obtener texto según el idioma
 def get_text(key):
     try:
         return language_dict[st.session_state.language][key]
     except KeyError:
         st.error(f"Clave de traducción no encontrada: {key}")
-        return f"[{key}]"  # Devuelve la clave entre corchetes si no se encuentra
+        return f"[{key}]"
 
 # CSS personalizado para el diseño
 def local_css():
@@ -277,7 +277,6 @@ def perform_eda(df):
     if len(numerical_cols) > 0:
         normality_results = []
         for col in numerical_cols:
-            # Eliminar valores nulos para la prueba
             col_data = df[col].dropna()
             if len(col_data) > 0:
                 try:
@@ -289,13 +288,12 @@ def perform_eda(df):
                         'Normal': p_value > 0.05
                     })
                 except:
-                    # Si hay error en la prueba de normalidad, saltar esta variable
                     continue
         if normality_results:
             normality_df = pd.DataFrame(normality_results)
             st.dataframe(normality_df)
         else:
-            st.warning("No se pudieron realizar pruebas de normalidad para las variables numéricas")
+            st.warning("No se pudieron realizar pruebas de normalidad")
     
     # Visualización
     st.subheader(get_text("visualization"))
@@ -326,41 +324,34 @@ def perform_correlation_analysis(df):
         st.warning("No hay variables numéricas para analizar correlaciones")
         return
     
-    # Matriz de correlación
     corr_matrix = numerical_df.corr()
     
     st.subheader(get_text("correlation_matrix"))
     st.dataframe(corr_matrix)
     
-    # Heatmap de correlaciones
     st.subheader(get_text("correlation_heatmap"))
     fig = px.imshow(corr_matrix, text_auto=True, aspect="auto", color_continuous_scale='RdBu_r')
     st.plotly_chart(fig)
     
-    # Correlaciones más fuertes con la variable objetivo
     st.subheader(get_text("strongest_correlations"))
     if st.session_state.target_column and st.session_state.target_column in corr_matrix.columns:
         target_correlations = corr_matrix[st.session_state.target_column].sort_values(key=abs, ascending=False)
         st.dataframe(target_correlations)
         
-        # Scatter plots con las variables más correlacionadas
-        top_correlated = target_correlations.index[1:4]  # Excluye la correlación consigo misma
+        top_correlated = target_correlations.index[1:4]
         for col in top_correlated:
             if col in df.columns and st.session_state.target_column in df.columns:
                 fig = px.scatter(df, x=col, y=st.session_state.target_column, 
                                 title=f"{col} vs {st.session_state.target_column}")
                 st.plotly_chart(fig)
     
-    # Análisis de multicolinealidad (VIF)
-    st.subheader(get_text("multicolinearity"))  # CORREGIDO: multicolineality -> multicolinearity
+    st.subheader(get_text("multicolinearity"))
     if len(numerical_df.columns) > 1:
         vif_data = pd.DataFrame()
         vif_data["Variable"] = numerical_df.columns
         
-        # Calcular VIF para cada variable
         vif_values = []
         for i in range(len(numerical_df.columns)):
-            # Eliminar NaNs para el cálculo de VIF
             temp_df = numerical_df.dropna()
             if len(temp_df) > 0:
                 try:
@@ -380,13 +371,11 @@ def perform_preprocessing(df):
     
     processed_df = df.copy()
     
-    # Selección de columna objetivo
     numerical_cols = processed_df.select_dtypes(include=[np.number]).columns.tolist()
     if numerical_cols:
         target_col = st.selectbox("Seleccione la variable objetivo", numerical_cols)
         st.session_state.target_column = target_col
     
-    # Imputación de valores faltantes
     st.subheader(get_text("imputation"))
     imputation_method = st.selectbox("Método de imputación", 
                                     ["Ninguno", "Media/Moda", "KNN"])
@@ -429,7 +418,6 @@ def perform_preprocessing(df):
                 except Exception as e:
                     st.error(f"Error en imputación KNN: {str(e)}")
     
-    # Tratamiento de outliers
     st.subheader(get_text("outlier_treatment"))
     outlier_treatment = st.selectbox("Método de tratamiento de outliers", 
                                     ["Ninguno", "Eliminación", "Transformación"])
@@ -454,7 +442,6 @@ def perform_preprocessing(df):
             except:
                 st.warning(f"No se pudo procesar outliers para {col}")
     
-    # Codificación de variables categóricas
     st.subheader(get_text("encoding"))
     encoding_method = st.selectbox("Método de codificación", 
                                   ["Ninguno", "One-Hot Encoding", "Label Encoding"])
@@ -491,7 +478,6 @@ def perform_scaling_split(df):
     
     df = st.session_state.processed_data
     
-    # Escalado
     st.subheader(get_text("scaling_options"))
     scaling_method = st.selectbox("Método de escalado", ["Ninguno", "StandardScaler"])
     
@@ -507,29 +493,66 @@ def perform_scaling_split(df):
             except Exception as e:
                 st.error(f"Error en escalado: {str(e)}")
     
-    # División de datos
     st.subheader(get_text("train_val_test_split"))
     if st.session_state.target_column and st.session_state.target_column in df.columns:
         X = df.drop(st.session_state.target_column, axis=1)
         y = df[st.session_state.target_column]
         
-        # Primera división: train (70%) y temp (30%)
         X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
-        
-        # Segunda división: validation (15%) y test (15%)
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
         
         st.write(f"Conjunto de entrenamiento: {X_train.shape[0]} muestras")
         st.write(f"Conjunto de validación: {X_val.shape[0]} muestras")
         st.write(f"Conjunto de prueba: {X_test.shape[0]} muestras")
         
-        # Validación cruzada
         st.subheader(get_text("cross_validation"))
         k_folds = st.slider("Número de folds para validación cruzada", 3, 10, 5)
         
         return X_train, X_val, X_test, y_train, y_val, y_test
     
     return None, None, None, None, None, None
+
+# Función para preparar datos para modelado
+def prepare_data_for_modeling(X_data):
+    """Prepara los datos eliminando o codificando variables categóricas"""
+    X_clean = X_data.copy()
+    
+    # Identificar columnas no numéricas
+    non_numeric_cols = X_clean.select_dtypes(exclude=[np.number]).columns.tolist()
+    
+    if non_numeric_cols:
+        st.warning(f"Columnas no numéricas encontradas: {non_numeric_cols}. Aplicando codificación...")
+        
+        # Para cada columna no numérica, intentar codificación
+        for col in non_numeric_cols:
+            try:
+                # Intentar convertir a numérico primero
+                X_clean[col] = pd.to_numeric(X_clean[col], errors='coerce')
+                
+                # Si todavía hay NaN, usar Label Encoding
+                if X_clean[col].isnull().any():
+                    le = LabelEncoder()
+                    # Rellenar NaN con un valor temporal para encoding
+                    X_clean[col] = X_clean[col].fillna('Missing')
+                    X_clean[col] = le.fit_transform(X_clean[col].astype(str))
+            except:
+                # Si falla la conversión, usar Label Encoding directamente
+                try:
+                    le = LabelEncoder()
+                    X_clean[col] = le.fit_transform(X_clean[col].astype(str))
+                except:
+                    st.error(f"No se pudo codificar la columna {col}. Se eliminará.")
+                    X_clean = X_clean.drop(columns=[col])
+    
+    # Verificar y manejar valores NaN
+    if X_clean.isnull().any().any():
+        st.warning("Existen valores NaN. Aplicando imputación...")
+        numeric_cols = X_clean.select_dtypes(include=[np.number]).columns.tolist()
+        if numeric_cols:
+            imputer = SimpleImputer(strategy='mean')
+            X_clean[numeric_cols] = imputer.fit_transform(X_clean[numeric_cols])
+    
+    return X_clean
 
 # Función para modelado
 def perform_modeling(X_train, y_train):
@@ -541,21 +564,36 @@ def perform_modeling(X_train, y_train):
     
     models = {}
     
+    # Preparar datos para modelado
+    st.info("Preparando datos para modelado...")
+    X_train_clean = prepare_data_for_modeling(X_train)
+    
     # Regresión Lineal
     if st.button("Entrenar Regresión Lineal"):
         with st.spinner("Entrenando Regresión Lineal..."):
             try:
                 start_time = time.time()
                 lr_model = LinearRegression()
-                lr_model.fit(X_train, y_train)
+                lr_model.fit(X_train_clean, y_train)
                 training_time = time.time() - start_time
                 
                 models['Linear Regression'] = {
                     'model': lr_model,
-                    'training_time': training_time
+                    'training_time': training_time,
+                    'feature_names': X_train_clean.columns.tolist()
                 }
                 
                 st.success(f"Regresión Lineal entrenada en {training_time:.2f} segundos")
+                
+                # Mostrar coeficientes
+                coef_df = pd.DataFrame({
+                    'Variable': X_train_clean.columns,
+                    'Coeficiente': lr_model.coef_
+                }).sort_values('Coeficiente', key=abs, ascending=False)
+                
+                st.subheader("Coeficientes del Modelo")
+                st.dataframe(coef_df)
+                
             except Exception as e:
                 st.error(f"Error entrenando Regresión Lineal: {str(e)}")
     
@@ -565,24 +603,24 @@ def perform_modeling(X_train, y_train):
             try:
                 start_time = time.time()
                 
-                # Verificar que hay datos para entrenar
-                if len(X_train) == 0:
+                if len(X_train_clean) == 0:
                     st.error("No hay datos de entrenamiento disponibles")
                     return
                 
                 mlp_model = Sequential([
-                    Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
+                    Dense(64, activation='relu', input_shape=(X_train_clean.shape[1],)),
                     Dense(32, activation='relu'),
                     Dense(1)
                 ])
                 mlp_model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-                history = mlp_model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=0)
+                history = mlp_model.fit(X_train_clean, y_train, epochs=50, batch_size=32, verbose=0)
                 training_time = time.time() - start_time
                 
                 models['MLP'] = {
                     'model': mlp_model,
                     'training_time': training_time,
-                    'history': history
+                    'history': history,
+                    'feature_names': X_train_clean.columns.tolist()
                 }
                 
                 st.success(f"MLP entrenado en {training_time:.2f} segundos")
@@ -591,6 +629,7 @@ def perform_modeling(X_train, y_train):
                 fig = px.line(x=range(len(history.history['loss'])), y=history.history['loss'], 
                              labels={'x': 'Época', 'y': 'Pérdida'}, title='Pérdida durante el entrenamiento')
                 st.plotly_chart(fig)
+                
             except Exception as e:
                 st.error(f"Error entrenando MLP: {str(e)}")
     
@@ -605,21 +644,21 @@ def perform_validation(models, X_val, y_val):
         st.warning("Primero debe entrenar algunos modelos")
         return
     
+    # Preparar datos de validación
+    X_val_clean = prepare_data_for_modeling(X_val)
+    
     results = []
     for name, model_info in models.items():
         model = model_info['model']
         training_time = model_info['training_time']
         
-        # Predecir
         if hasattr(model, 'predict'):
             try:
-                y_pred = model.predict(X_val)
+                y_pred = model.predict(X_val_clean)
                 
-                # Aplanar si es necesario
                 if len(y_pred.shape) > 1:
                     y_pred = y_pred.flatten()
                 
-                # Calcular métricas
                 mae = mean_absolute_error(y_val, y_pred)
                 rmse = np.sqrt(mean_squared_error(y_val, y_pred))
                 r2 = r2_score(y_val, y_pred)
@@ -634,12 +673,10 @@ def perform_validation(models, X_val, y_val):
             except Exception as e:
                 st.warning(f"No se pudieron calcular métricas para {name}: {str(e)}")
     
-    # Mostrar resultados
     if results:
         results_df = pd.DataFrame(results)
         st.dataframe(results_df)
         
-        # Gráfico de comparación de modelos
         fig = go.Figure()
         fig.add_trace(go.Bar(x=results_df['Modelo'], y=results_df['R²'], name='R²'))
         fig.update_layout(title='Comparación de R² entre modelos', xaxis_title='Modelo', yaxis_title='R²')
@@ -649,19 +686,14 @@ def perform_validation(models, X_val, y_val):
 
 # Función principal
 def main():
-    # Aplicar CSS personalizado
     local_css()
     
-    # Sidebar
     with st.sidebar:
-        # Usar markdown para mostrar el emoji en lugar de st.image
         st.markdown("<h1 style='text-align: center; font-size: 80px;'>🏠</h1>", unsafe_allow_html=True)
         st.title(get_text("title"))
         
-        # Selector de idioma
         st.session_state.language = st.selectbox("Idioma/Language/Langue", options=["ES", "EN", "FR"])
         
-        # Carga de datos
         st.header(get_text("upload_data"))
         uploaded_file = st.file_uploader(get_text("select_file"), type=['csv', 'xlsx', 'xls'])
         
@@ -672,7 +704,6 @@ def main():
             if st.session_state.data is not None:
                 df = st.session_state.data
                 
-                # Navegación
                 st.header("Navegación")
                 options = [
                     get_text("eda"),
@@ -686,7 +717,6 @@ def main():
                 ]
                 choice = st.radio("Seleccione una opción:", options)
     
-    # Página principal
     st.markdown(f'<h1 class="main-header">{get_text("title")}</h1>', unsafe_allow_html=True)
     
     if uploaded_file is None:

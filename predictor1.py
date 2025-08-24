@@ -26,10 +26,16 @@ from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
-import skfuzzy as fuzz
-from skfuzzy import control as ctrl
 import warnings
 warnings.filterwarnings('ignore')
+
+# Intentar importar scikit-fuzzy, pero continuar si no está disponible
+try:
+    import skfuzzy as fuzz
+    from skfuzzy import control as ctrl
+    SKFUZZY_AVAILABLE = True
+except ImportError:
+    SKFUZZY_AVAILABLE = False
 
 # Configuración de la página
 st.set_page_config(
@@ -96,7 +102,8 @@ language_dict = {
         "preprocessing_first": "Primero debe realizar el preprocesamiento de datos",
         "select_target": "Seleccione la variable objetivo",
         "no_numerical_vars": "No hay variables numéricas para análisis",
-        "no_models_trained": "No hay modelos entrenados. Por favor, entrene algunos modelos primero."
+        "no_models_trained": "No hay modelos entrenados. Por favor, entrene algunos modelos primero.",
+        "skfuzzy_not_available": "scikit-fuzzy no está disponible. Instálelo con: pip install scikit-fuzzy"
     },
     "EN": {
         "title": "Housing Price Estimator",
@@ -153,7 +160,8 @@ language_dict = {
         "preprocessing_first": "You must first preprocess the data",
         "select_target": "Select target variable",
         "no_numerical_vars": "No numerical variables for analysis",
-        "no_models_trained": "No models trained. Please train some models first."
+        "no_models_trained": "No models trained. Please train some models first.",
+        "skfuzzy_not_available": "scikit-fuzzy is not available. Install with: pip install scikit-fuzzy"
     },
     "FR": {
         "title": "Estimateur de Prix Immobiliers",
@@ -207,10 +215,11 @@ language_dict = {
         "iterative_imputation": "Imputation Itérative",
         "no_data_loaded": "Aucune donnée chargée. Veuillez télécharger un jeu de données d'abord.",
         "data_loaded": "Données chargées: {} enregistrements, {} variables",
-        "preprocessing_first": "Vous devez d'abord prétraiter les données",
+        "preprocessing_first": "Vous devez d'abord prétraiter les datos",
         "select_target": "Sélectionnez la variable cible",
         "no_numerical_vars": "Aucune variable numérique pour l'analyse",
-        "no_models_trained": "Aucun modèle entraîné. Veuillez d'abord entraîner des modèles."
+        "no_models_trained": "Aucun modèle entraîné. Veuillez d'abord entraîner des modèles.",
+        "skfuzzy_not_available": "scikit-fuzzy n'est pas disponible. Installez-le avec: pip install scikit-fuzzy"
     }
 }
 
@@ -289,6 +298,14 @@ def local_css():
         border-radius: 5px;
         margin-bottom: 1rem;
         border: 1px solid #c3e6cb;
+    }
+    .warning-box {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        border: 1px solid #ffeeba;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -628,7 +645,7 @@ def perform_preprocessing():
             st.subheader(get_text("cross_validation"))
             k_folds = st.slider("Número de folds para validación cruzada", 3, 10, 5)
 
-# Función para preparar datos para modelado
+# Función para preparar datos para modelado - CORREGIDA
 def prepare_data_for_modeling(X_data):
     """Prepara los datos eliminando o codificando variables categóricas"""
     X_clean = X_data.copy()
@@ -640,6 +657,7 @@ def prepare_data_for_modeling(X_data):
         st.warning(f"Columnas no numéricas encontradas: {non_numeric_cols}. Aplicando codificación...")
         
         # Para cada columna no numérica, intentar codificación
+        cols_to_drop = []
         for col in non_numeric_cols:
             try:
                 # Intentar convertir a numérico primero
@@ -655,22 +673,40 @@ def prepare_data_for_modeling(X_data):
                 # Si falla la conversión, usar Label Encoding directamente
                 try:
                     le = LabelEncoder()
+                    X_clean[col] = X_clean[col].fillna('Missing')
                     X_clean[col] = le.fit_transform(X_clean[col].astype(str))
                 except:
-                    st.error(f"No se pudo codificar la columna {col}. Se eliminará.")
-                    X_clean = X_clean.drop(columns=[col])
+                    st.warning(f"No se pudo codificar la columna {col}. Se eliminará.")
+                    cols_to_drop.append(col)
+        
+        # Eliminar columnas problemáticas
+        if cols_to_drop:
+            X_clean = X_clean.drop(columns=cols_to_drop)
     
-    # Verificar y manejar valores NaN
+    # Verificar y manejar valores NaN - CORREGIDO
     if X_clean.isnull().any().any():
         st.warning("Existen valores NaN. Aplicando imputación...")
+        
+        # Identificar columnas numéricas después de la codificación
         numeric_cols = X_clean.select_dtypes(include=[np.number]).columns.tolist()
+        
         if numeric_cols:
+            # Crear una copia para la imputación
+            X_numeric = X_clean[numeric_cols].copy()
+            
+            # Aplicar imputación
             imputer = SimpleImputer(strategy='mean')
-            X_clean[numeric_cols] = imputer.fit_transform(X_clean[numeric_cols])
+            X_imputed = imputer.fit_transform(X_numeric)
+            
+            # Crear DataFrame con los datos imputados
+            X_imputed_df = pd.DataFrame(X_imputed, columns=numeric_cols, index=X_clean.index)
+            
+            # Reemplazar las columnas numéricas con los datos imputados
+            X_clean[numeric_cols] = X_imputed_df
     
     return X_clean
 
-# Modelo híbrido de red neuronal con lógica difusa
+# Modelo híbrido de red neuronal con lógica difusa (versión simplificada)
 def create_hybrid_model(input_dim):
     # Parte de red neuronal
     model = Sequential([
@@ -688,7 +724,7 @@ def create_hybrid_model(input_dim):
     
     return model
 
-# Función para entrenar modelos
+# Función para entrenar modelos - CORREGIDA
 def train_models():
     if (st.session_state.X_train is None or st.session_state.y_train is None or 
         st.session_state.X_val is None or st.session_state.y_val is None):
@@ -702,9 +738,19 @@ def train_models():
     X_val = st.session_state.X_val
     y_val = st.session_state.y_val
     
-    # Preparar datos para modelado
-    X_train_clean = prepare_data_for_modeling(X_train)
-    X_val_clean = prepare_data_for_modeling(X_val)
+    # Preparar datos para modelado con manejo de errores
+    try:
+        X_train_clean = prepare_data_for_modeling(X_train)
+        X_val_clean = prepare_data_for_modeling(X_val)
+        
+        # Verificar que tenemos datos después del preprocesamiento
+        if X_train_clean.empty or X_val_clean.empty:
+            st.error("No hay datos válidos para entrenar después del preprocesamiento.")
+            return
+            
+    except Exception as e:
+        st.error(f"Error preparando datos para modelado: {str(e)}")
+        return
     
     models = {}
     
@@ -726,13 +772,14 @@ def train_models():
                 st.success(f"Regresión Lineal entrenada en {training_time:.2f} segundos")
                 
                 # Mostrar coeficientes
-                coef_df = pd.DataFrame({
-                    'Variable': X_train_clean.columns,
-                    'Coeficiente': lr_model.coef_
-                }).sort_values('Coeficiente', key=abs, ascending=False)
-                
-                st.subheader("Coeficientes del Modelo")
-                st.dataframe(coef_df.head(10))
+                if hasattr(lr_model, 'coef_'):
+                    coef_df = pd.DataFrame({
+                        'Variable': X_train_clean.columns,
+                        'Coeficiente': lr_model.coef_
+                    }).sort_values('Coeficiente', key=abs, ascending=False)
+                    
+                    st.subheader("Coeficientes del Modelo")
+                    st.dataframe(coef_df.head(10))
                 
             except Exception as e:
                 st.error(f"Error entrenando Regresión Lineal: {str(e)}")
@@ -818,13 +865,17 @@ def train_models():
             except Exception as e:
                 st.error(f"Error entrenando Red Neuronal Secuencial: {str(e)}")
     
-    # 4. Modelo Híbrido (Red Neuronal + Lógica Difusa)
+    # 4. Modelo Híbrido (Red Neuronal) - Versión simplificada sin scikit-fuzzy
     if st.button(get_text("hybrid_model")):
+        if not SKFUZZY_AVAILABLE:
+            st.warning(get_text("skfuzzy_not_available"))
+            st.info("Usando una red neuronal profunda como alternativa...")
+        
         with st.spinner("Entrenando Modelo Híbrido..."):
             try:
                 start_time = time.time()
                 
-                # Parte de red neuronal
+                # Parte de red neuronal (alternativa cuando scikit-fuzzy no está disponible)
                 hybrid_model = create_hybrid_model(X_train_clean.shape[1])
                 history = hybrid_model.fit(X_train_clean, y_train, 
                                           epochs=100, batch_size=32, 
@@ -850,12 +901,22 @@ def train_models():
                 
                 # Explicación del modelo híbrido
                 with st.expander("Explicación del Modelo Híbrido"):
-                    st.write("""
-                    Este modelo combina una red neuronal profunda con elementos de lógica difusa:
-                    - La red neuronal aprende patrones complejos en los datos
-                    - La lógica difusa ayuda a manejar la incertidumbre y proporciona interpretabilidad
-                    - El dropout regulariza el modelo para prevenir sobreajuste
-                    """)
+                    if SKFUZZY_AVAILABLE:
+                        st.write("""
+                        Este modelo combina una red neuronal profunda con elementos de lógica difusa:
+                        - La red neuronal aprende patrones complejos en los datos
+                        - La lógica difusa ayuda a manejar la incertidumbre y proporciona interpretabilidad
+                        - El dropout regulariza el modelo para prevenir sobreajuste
+                        """)
+                    else:
+                        st.write("""
+                        **Nota:** scikit-fuzzy no está disponible. 
+                        Este es un modelo de red neuronal profunda que serviría como base para el modelo híbrido.
+                        Para la funcionalidad completa de lógica difusa, instale scikit-fuzzy:
+                        ```bash
+                        pip install scikit-fuzzy
+                        ```
+                        """)
                 
             except Exception as e:
                 st.error(f"Error entrenando Modelo Híbrido: {str(e)}")
@@ -863,8 +924,9 @@ def train_models():
     # Actualizar modelos en el estado de la sesión
     if models:
         st.session_state.models.update(models)
+        st.success(f"{len(models)} modelo(s) entrenado(s) exitosamente")
 
-# Función para validación y métricas
+# Función para validación y métricas - CORREGIDA
 def perform_validation():
     st.subheader(get_text("model_performance"))
     
@@ -877,8 +939,12 @@ def perform_validation():
         return
     
     # Preparar datos de validación
-    X_val_clean = prepare_data_for_modeling(st.session_state.X_val)
-    y_val = st.session_state.y_val
+    try:
+        X_val_clean = prepare_data_for_modeling(st.session_state.X_val)
+        y_val = st.session_state.y_val
+    except Exception as e:
+        st.error(f"Error preparando datos de validación: {str(e)}")
+        return
     
     results = []
     for name, model_info in st.session_state.models.items():

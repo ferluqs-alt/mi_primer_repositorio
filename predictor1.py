@@ -169,6 +169,18 @@ if 'target_column' not in st.session_state:
     st.session_state.target_column = None
 if 'models' not in st.session_state:
     st.session_state.models = {}
+if 'X_train' not in st.session_state:
+    st.session_state.X_train = None
+if 'X_val' not in st.session_state:
+    st.session_state.X_val = None
+if 'X_test' not in st.session_state:
+    st.session_state.X_test = None
+if 'y_train' not in st.session_state:
+    st.session_state.y_train = None
+if 'y_val' not in st.session_state:
+    st.session_state.y_val = None
+if 'y_test' not in st.session_state:
+    st.session_state.y_test = None
 
 # Función para obtener texto según el idioma
 def get_text(key):
@@ -261,13 +273,16 @@ def perform_eda(df):
     if len(numerical_cols) > 0:
         normality_results = []
         for col in numerical_cols:
-            stat, p_value = kstest(df[col].dropna(), 'norm')
-            normality_results.append({
-                'Variable': col,
-                'Estadístico': stat,
-                'p-valor': p_value,
-                'Normal': p_value > 0.05
-            })
+            # Eliminar valores nulos para la prueba
+            col_data = df[col].dropna()
+            if len(col_data) > 0:
+                stat, p_value = kstest(col_data, 'norm')
+                normality_results.append({
+                    'Variable': col,
+                    'Estadístico': stat,
+                    'p-valor': p_value,
+                    'Normal': p_value > 0.05
+                })
         normality_df = pd.DataFrame(normality_results)
         st.dataframe(normality_df)
     
@@ -329,7 +344,19 @@ def perform_correlation_analysis(df):
     if len(numerical_df.columns) > 1:
         vif_data = pd.DataFrame()
         vif_data["Variable"] = numerical_df.columns
-        vif_data["VIF"] = [variance_inflation_factor(numerical_df.values, i) for i in range(len(numerical_df.columns))]
+        
+        # Calcular VIF para cada variable
+        vif_values = []
+        for i in range(len(numerical_df.columns)):
+            # Eliminar NaNs para el cálculo de VIF
+            temp_df = numerical_df.dropna()
+            if len(temp_df) > 0:
+                vif = variance_inflation_factor(temp_df.values, i)
+                vif_values.append(vif)
+            else:
+                vif_values.append(np.nan)
+        
+        vif_data["VIF"] = vif_values
         st.dataframe(vif_data)
 
 # Función para preprocesamiento de datos
@@ -341,7 +368,8 @@ def perform_preprocessing(df):
     # Selección de columna objetivo
     numerical_cols = processed_df.select_dtypes(include=[np.number]).columns.tolist()
     if numerical_cols:
-        st.session_state.target_column = st.selectbox("Seleccione la variable objetivo", numerical_cols)
+        target_col = st.selectbox("Seleccione la variable objetivo", numerical_cols)
+        st.session_state.target_column = target_col
     
     # Imputación de valores faltantes
     st.subheader(get_text("imputation"))
@@ -423,7 +451,7 @@ def perform_scaling_split(df):
     
     if st.session_state.processed_data is None:
         st.warning("Primero debe realizar el preprocesamiento de datos")
-        return None, None, None, None
+        return None, None, None, None, None, None
     
     df = st.session_state.processed_data
     
@@ -493,6 +521,12 @@ def perform_modeling(X_train, y_train):
     if st.button("Entrenar Perceptrón Multicapa (MLP)"):
         with st.spinner("Entrenando MLP..."):
             start_time = time.time()
+            
+            # Verificar que hay datos para entrenar
+            if len(X_train) == 0:
+                st.error("No hay datos de entrenamiento disponibles")
+                return
+            
             mlp_model = Sequential([
                 Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
                 Dense(32, activation='relu'),
@@ -532,30 +566,38 @@ def perform_validation(models, X_val, y_val):
         training_time = model_info['training_time']
         
         # Predecir
-        y_pred = model.predict(X_val)
-        
-        # Calcular métricas
-        mae = mean_absolute_error(y_val, y_pred)
-        rmse = np.sqrt(mean_squared_error(y_val, y_pred))
-        r2 = r2_score(y_val, y_pred)
-        
-        results.append({
-            'Modelo': name,
-            'MAE': mae,
-            'RMSE': rmse,
-            'R²': r2,
-            'Tiempo de entrenamiento (s)': training_time
-        })
+        if hasattr(model, 'predict'):
+            y_pred = model.predict(X_val)
+            
+            # Aplanar si es necesario
+            if len(y_pred.shape) > 1:
+                y_pred = y_pred.flatten()
+            
+            # Calcular métricas
+            mae = mean_absolute_error(y_val, y_pred)
+            rmse = np.sqrt(mean_squared_error(y_val, y_pred))
+            r2 = r2_score(y_val, y_pred)
+            
+            results.append({
+                'Modelo': name,
+                'MAE': mae,
+                'RMSE': rmse,
+                'R²': r2,
+                'Tiempo de entrenamiento (s)': training_time
+            })
     
     # Mostrar resultados
-    results_df = pd.DataFrame(results)
-    st.dataframe(results_df)
-    
-    # Gráfico de comparación de modelos
-    fig = go.Figure()
-    fig.add_trace(go.Bar(x=results_df['Modelo'], y=results_df['R²'], name='R²'))
-    fig.update_layout(title='Comparación de R² entre modelos', xaxis_title='Modelo', yaxis_title='R²')
-    st.plotly_chart(fig)
+    if results:
+        results_df = pd.DataFrame(results)
+        st.dataframe(results_df)
+        
+        # Gráfico de comparación de modelos
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=results_df['Modelo'], y=results_df['R²'], name='R²'))
+        fig.update_layout(title='Comparación de R² entre modelos', xaxis_title='Modelo', yaxis_title='R²')
+        st.plotly_chart(fig)
+    else:
+        st.warning("No se pudieron calcular métricas para los modelos")
 
 # Función principal
 def main():
@@ -564,7 +606,8 @@ def main():
     
     # Sidebar
     with st.sidebar:
-        st.image("🏠", width=100)
+        # Usar markdown para mostrar el emoji en lugar de st.image
+        st.markdown("<h1 style='text-align: center; font-size: 80px;'>🏠</h1>", unsafe_allow_html=True)
         st.title(get_text("title"))
         
         # Selector de idioma
@@ -616,22 +659,25 @@ def main():
         
         elif choice == get_text("scaling"):
             X_train, X_val, X_test, y_train, y_val, y_test = perform_scaling_split(df)
-            st.session_state.X_train = X_train
-            st.session_state.X_val = X_val
-            st.session_state.X_test = X_test
-            st.session_state.y_train = y_train
-            st.session_state.y_val = y_val
-            st.session_state.y_test = y_test
+            if X_train is not None:
+                st.session_state.X_train = X_train
+                st.session_state.X_val = X_val
+                st.session_state.X_test = X_test
+                st.session_state.y_train = y_train
+                st.session_state.y_val = y_val
+                st.session_state.y_test = y_test
         
         elif choice == get_text("modeling"):
-            if 'X_train' in st.session_state and 'y_train' in st.session_state:
+            if st.session_state.X_train is not None and st.session_state.y_train is not None:
                 models = perform_modeling(st.session_state.X_train, st.session_state.y_train)
                 st.session_state.models = models
             else:
                 st.warning("Primero debe realizar el escalado y división de datos")
         
         elif choice == get_text("validation"):
-            if 'X_val' in st.session_state and 'y_val' in st.session_state and st.session_state.models:
+            if (st.session_state.X_val is not None and 
+                st.session_state.y_val is not None and 
+                st.session_state.models):
                 perform_validation(st.session_state.models, st.session_state.X_val, st.session_state.y_val)
             else:
                 st.warning("Primero debe entrenar algunos modelos y tener conjuntos de validación")

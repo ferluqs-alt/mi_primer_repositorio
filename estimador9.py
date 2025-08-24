@@ -480,7 +480,7 @@ translations = {
     }
 }
 
-# Function to get translated text
+# Función para obtener texto traducido
 def get_text(key):
     """Returns translated text for the given key based on selected language"""
     lang = st.session_state.get('language', 'es')
@@ -570,7 +570,7 @@ def translate_dataframe(df, language):
     
     return df_translated
 
-# Function to handle null values interactively
+# Función para manejar valores nulos 
 def handle_null_values(df):
     """Interfaz para manejar valores nulos de forma interactiva"""
     if df is None:
@@ -579,17 +579,17 @@ def handle_null_values(df):
     st.header(get_text("null_handling_header"))
     
     # Mostrar resumen de valores nulos
-    if st.checkbox(get_text("show_null_summary"), value=True):
-        null_summary = df.isnull().sum()
-        null_summary = null_summary[null_summary > 0]
+    #if st.checkbox(get_text("show_null_summary"), value=True):
+     #   null_summary = df.isnull().sum()
+      #  null_summary = null_summary[null_summary > 0]
         
-        if len(null_summary) > 0:
-            st.subheader(get_text("null_summary_title"))
-            st.dataframe(pd.DataFrame({
-                'Column': null_summary.index,
-                'Null Count': null_summary.values,
-                'Percentage': (null_summary.values / len(df) * 100).round(2)
-            }))
+     #   if len(null_summary) > 0:
+      #      st.subheader(get_text("null_summary_title"))
+      #      st.dataframe(pd.DataFrame({
+       #         'Column': null_summary.index,
+        #        'Null Count': null_summary.values,
+         #       'Percentage': (null_summary.values / len(df) * 100).round(2)
+          #  }))
             
             # Selector de estrategia por columna
             st.subheader(get_text("select_null_strategy"))
@@ -1703,4 +1703,5 @@ def main():
     st.markdown(get_text("developed_with"))
 
 if __name__ == "__main__":
+
     main()

@@ -650,6 +650,9 @@ def prepare_data_for_modeling(X_data):
     """Prepara los datos eliminando o codificando variables categóricas"""
     X_clean = X_data.copy()
     
+    # Guardar el índice original
+    original_index = X_clean.index
+    
     # Identificar columnas no numéricas
     non_numeric_cols = X_clean.select_dtypes(exclude=[np.number]).columns.tolist()
     
@@ -698,11 +701,15 @@ def prepare_data_for_modeling(X_data):
             imputer = SimpleImputer(strategy='mean')
             X_imputed = imputer.fit_transform(X_numeric)
             
-            # Crear DataFrame con los datos imputados
-            X_imputed_df = pd.DataFrame(X_imputed, columns=numeric_cols, index=X_clean.index)
+            # Crear DataFrame con los datos imputados, asegurando la consistencia de índices
+            X_imputed_df = pd.DataFrame(X_imputed, columns=numeric_cols)
+            X_imputed_df.index = original_index  # Restaurar el índice original
             
             # Reemplazar las columnas numéricas con los datos imputados
             X_clean[numeric_cols] = X_imputed_df
+    
+    # Asegurar que el índice sea consistente
+    X_clean.index = original_index
     
     return X_clean
 

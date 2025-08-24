@@ -21,7 +21,7 @@ from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from scipy import stats
-from scipy.stats import ks_2samp
+from scipy.stats import ks_2samp, norm
 import statsmodels.api as sm
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
@@ -206,7 +206,8 @@ translations = {
         "nulls_removed_success": "Se eliminaron exitosamente",
         "null_values": "valores nulos",
         "no_null_values": "No se encontraron valores nulos en el dataset.",
-        "unknown_value": "Desconocido"
+        "unknown_value": "Desconocido",
+        "Importance": "Importancia"
     },
     "en": {
         "title": "Housing Price Estimator",
@@ -332,7 +333,8 @@ translations = {
         "nulls_removed_success": "Successfully removed",
         "null_values": "null values",
         "no_null_values": "No null values found in the dataset.",
-        "unknown_value": "Unknown"
+        "unknown_value": "Unknown",
+        "Importance": "Importance"
     },
     "fr": {
         "title": "Estimateur de Prix Immobiliers",
@@ -458,14 +460,15 @@ translations = {
         "nulls_removed_success": "Supprimé avec succès",
         "null_values": "valeurs manquantes",
         "no_null_values": "Aucune valeur manquante trouvée dans le dataset.",
-        "unknown_value": "Inconnu"
+        "unknown_value": "Inconnu",
+        "Importance": "Importance"
     }
 }
 
 # Function to get translated text
 def get_text(key):
     """Returns translated text for the given key based on selected language"""
-    lang = st.session_state.language
+    lang = st.session_state.get('language', 'es')
     if lang in translations and key in translations[lang]:
         return translations[lang][key]
     elif "en" in translations and key in translations["en"]:  # Fallback to English
@@ -716,12 +719,15 @@ def perform_eda(df, target_var):
         normality_tests = {}
         for col in numeric_cols:
             if col != target_var:  # Don't test target variable
-                stat, p_value = ks_2samp(df[col].dropna(), 'norm')
-                normality_tests[col] = {
-                    'statistic': stat,
-                    'p_value': p_value,
-                    'normal': p_value > 0.05
-                }
+                # Use a proper normality test (K-S test with normal distribution)
+                data = df[col].dropna()
+                if len(data) > 0:
+                    stat, p_value = stats.kstest(data, 'norm', args=(data.mean(), data.std()))
+                    normality_tests[col] = {
+                        'statistic': stat,
+                        'p_value': p_value,
+                        'normal': p_value > 0.05
+                    }
         
         return {
             'dimensions': dimensions,
@@ -885,7 +891,7 @@ def calculate_vif(df, target_var):
     if len(numeric_cols) > 1:
         vif_data = pd.DataFrame()
         vif_data["Feature"] = numeric_cols
-        vif_data["VIF"] = [variance_inflation_factor(df[numeric_cols].values, i) 
+        vif_data["VIF"] = [variance_inflation_factor(df[numeric_cols].dropna().values, i) 
                           for i in range(len(numeric_cols))]
         return vif_data
     return pd.DataFrame()
@@ -936,7 +942,7 @@ def preprocess_data(df, target_var, options):
         numeric_cols = df_processed.select_dtypes(include=[np.number]).columns
         vif_data = pd.DataFrame()
         vif_data["Feature"] = numeric_cols
-        vif_data["VIF"] = [variance_inflation_factor(df_processed[numeric_cols].values, i) 
+        vif_data["VIF"] = [variance_inflation_factor(df_processed[numeric_cols].dropna().values, i) 
                           for i in range(len(numeric_cols))]
         
         # Remove features with high VIF
@@ -1340,7 +1346,8 @@ def main():
             st.session_state.language = selected_language
             if st.session_state.df is not None:
                 st.session_state.df_translated = translate_dataframe(st.session_state.df, st.session_state.language)
-            st.rerun()
+            # Use session state to trigger update instead of rerun
+            st.session_state.language_updated = True
         
         # Data upload
         st.header(get_text("upload_data"))

@@ -207,7 +207,12 @@ translations = {
         "null_values": "valores nulos",
         "no_null_values": "No se encontraron valores nulos en el dataset.",
         "unknown_value": "Desconocido",
-        "Importance": "Importancia"
+        "Importance": "Importancia",
+        "NEAR BAY": "CERCA DE LA BAHÍA",
+        "NEAR OCEAN": "CERCA DEL OCÉANO",
+        "INLAND": "INTERIOR",
+        "ISLAND": "ISLA",
+        "<1H OCEAN": "<1H OCÉANO"
     },
     "en": {
         "title": "Housing Price Estimator",
@@ -334,7 +339,12 @@ translations = {
         "null_values": "null values",
         "no_null_values": "No null values found in the dataset.",
         "unknown_value": "Unknown",
-        "Importance": "Importance"
+        "Importance": "Importance",
+        "NEAR BAY": "NEAR BAY",
+        "NEAR OCEAN": "NEAR OCEAN",
+        "INLAND": "INLAND",
+        "ISLAND": "ISLAND",
+        "<1H OCEAN": "<1H OCEAN"
     },
     "fr": {
         "title": "Estimateur de Prix Immobiliers",
@@ -371,7 +381,7 @@ translations = {
         "r2": "Coefficient de Détermination (R²)",
         "select_language": "Sélectionner la Langue",
         "dataset_preview": "Aperçu du Jeu de Données",
-        "handle_missing": "Gérer les valeurs manquantes",
+        "handle_missing": "Gérer les valores manquantes",
         "remove_duplicates": "Supprimer les doublons",
         "handle_outliers": "Gérer les valeurs aberrantes (Z-score)",
         "encode_categorical": "Encoder les variables catégorielles",
@@ -447,21 +457,26 @@ translations = {
         "show_null_summary": "Afficher le résumé des valeurs manquantes",
         "null_summary_title": "Résumé des Valeurs Manquantes",
         "select_null_strategy": "Sélectionner une Stratégie pour les Valeurs Manquantes",
-        "strategy_for": "Stratégie pour",
+        "strategy_for": "Stratégie para",
         "drop_na": "Supprimer les lignes avec des valeurs manquantes",
         "mean_imputation": "Remplir avec la moyenne",
-        "median_imputation": "Remplir avec la médiane",
+        "median_imputation": "Remplir avec la médiana",
         "mode_imputation": "Remplir avec le mode",
         "constant_imputation": "Remplir avec une valeur constante",
         "unknown_imputation": "Remplir avec 'Inconnu'",
         "interpolation": "Interpolation",
-        "constant_value_for": "Valeur constante pour",
-        "apply_null_strategies": "Appliquer les Stratégies pour Valeurs Manquantes",
+        "constant_value_for": "Valeur constante para",
+        "apply_null_strategies": "Appliquer les Stratégies para Valeurs Manquantes",
         "nulls_removed_success": "Supprimé avec succès",
         "null_values": "valeurs manquantes",
         "no_null_values": "Aucune valeur manquante trouvée dans le dataset.",
         "unknown_value": "Inconnu",
-        "Importance": "Importance"
+        "Importance": "Importance",
+        "NEAR BAY": "PRÈS DE LA BAIE",
+        "NEAR OCEAN": "PRÈS DE L'OCÉAN",
+        "INLAND": "INTÉRIEUR",
+        "ISLAND": "ÎLE",
+        "<1H OCEAN": "<1H OCÉAN"
     }
 }
 
@@ -796,9 +811,9 @@ def display_eda_results(eda_results, target_var):
         if not missing_data.empty:
             st.dataframe(missing_data)
         else:
-            st.info("No missing values found")
+            st.info("No se encontraron valores faltantes")
     else:
-        st.info("No missing values data available")
+        st.info("No hay datos de valores faltantes disponibles")
     
     # Duplicates
     st.subheader(get_text("duplicates"))
@@ -811,7 +826,7 @@ def display_eda_results(eda_results, target_var):
     if not descriptive_stats.empty:
         st.dataframe(descriptive_stats)
     else:
-        st.info("No descriptive statistics available")
+        st.info("No hay estadísticas descriptivas disponibles")
     
     # Normality tests
     st.subheader(get_text("normality_test"))
@@ -822,7 +837,7 @@ def display_eda_results(eda_results, target_var):
         normality_df['Requires Normalization'] = ~normality_df['Normal']
         st.dataframe(normality_df)
     else:
-        st.info("No normality test results available")
+        st.info("No hay resultados de pruebas de normalidad disponibles")
     
     # Visualizations
     st.subheader(get_text("distributions"))
@@ -837,14 +852,14 @@ def display_eda_results(eda_results, target_var):
         
         for i, col in enumerate(numeric_cols_list[:num_cols_to_show]):
             axes[i].hist(df[col].dropna(), bins=30, alpha=0.7, color='blue')
-            axes[i].set_title(f'Distribution of {col}')
+            axes[i].set_title(f'Distribución de {col}')
             axes[i].set_xlabel(col)
-            axes[i].set_ylabel('Frequency')
+            axes[i].set_ylabel('Frecuencia')
         
         plt.tight_layout()
         st.pyplot(fig)
     else:
-        st.info("No numeric variables to display distributions")
+        st.info("No hay variables numéricas para mostrar distribuciones")
     
     # Correlation matrix
     st.subheader(get_text("correlation_matrix"))
@@ -860,7 +875,7 @@ def display_eda_results(eda_results, target_var):
             st.write(f"{get_text('top_correlations')} {target_var}:")
             st.write(target_correlations[1:6])  # Top 5 excluding itself
     else:
-        st.info("Not enough numeric variables for correlation matrix")
+        st.info("No hay suficientes variables numéricas para la matriz de correlación")
     
     # Outlier detection
     st.subheader(get_text("outlier_detection"))
@@ -873,12 +888,12 @@ def display_eda_results(eda_results, target_var):
         
         for i, col in enumerate(numeric_cols_list[:num_cols_to_show]):
             axes[i].boxplot(df[col].dropna())
-            axes[i].set_title(f'Boxplot of {col}')
+            axes[i].set_title(f'Diagrama de caja de {col}')
         
         plt.tight_layout()
         st.pyplot(fig)
     else:
-        st.info("No numeric variables for outlier detection")
+        st.info("No hay variables numéricas para la detección de valores atípicos")
 
 # Function to calculate VIF
 def calculate_vif(df, target_var):
@@ -1188,7 +1203,7 @@ def perform_time_series_analysis(df, date_col, target_col):
             'dates': test.index
         }
     except Exception as e:
-        st.error(f"Error in time series analysis: {str(e)}")
+        st.error(f"Error en análisis de series temporales: {str(e)}")
         return None
 
 # Function to generate PDF report
@@ -1213,7 +1228,7 @@ def generate_pdf_report(eda_results, model_results, evaluation_results, ts_resul
     story.append(Paragraph(get_text("model_comparison"), styles['Heading2']))
     
     # Create table with model results
-    model_data = [['Model', 'MAE', 'RMSE', 'R²', 'Training Time']]
+    model_data = [['Modelo', 'MAE', 'RMSE', 'R²', 'Tiempo de Entrenamiento']]
     for model_name, results in evaluation_results.items():
         model_data.append([
             model_name,
@@ -1316,7 +1331,7 @@ def load_data(uploaded_file):
             df = pd.read_excel(uploaded_file)
         return df
     except Exception as e:
-        st.error(f"Error loading file: {str(e)}")
+        st.error(f"Error cargando archivo: {str(e)}")
         return None
 
 # Main application
@@ -1440,7 +1455,7 @@ def main():
                         ]
                         
                         selected_models = st.multiselect(
-                            "Select models to train",
+                            "Seleccionar modelos para entrenar",
                             options=model_options,
                             default=[get_text("linear_regression"), get_text("random_forest")]
                         )
@@ -1547,16 +1562,16 @@ def main():
                         # Time series analysis if date column exists
                         date_cols = st.session_state.df.select_dtypes(include=['datetime64']).columns.tolist()
                         if date_cols:
-                            date_col = st.selectbox("Select date column for time series analysis", date_cols)
-                            if st.button("Run Time Series Analysis"):
-                                with st.spinner("Running time series analysis..."):
+                            date_col = st.selectbox("Seleccionar columna de fecha para análisis de series temporales", date_cols)
+                            if st.button("Ejecutar Análisis de Series Temporales"):
+                                with st.spinner("Ejecutando análisis de series temporales..."):
                                     st.session_state.ts_results = perform_time_series_analysis(
                                         st.session_state.df, date_col, st.session_state.target_var
                                     )
                         
                         # Generate PDF report
                         if st.button(get_text("generate_report")):
-                            with st.spinner("Generating PDF report..."):
+                            with st.spinner("Generando reporte PDF..."):
                                 # Create a temporary file
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
                                     generate_pdf_report(
@@ -1574,7 +1589,7 @@ def main():
                                     st.download_button(
                                         label=get_text("download_pdf"),
                                         data=pdf_data,
-                                        file_name="housing_price_report.pdf",
+                                        file_name="reporte_precios_viviendas.pdf",
                                         mime="application/pdf"
                                     )
 
@@ -1622,7 +1637,7 @@ def main():
             evaluation_data = []
             for model_name, results in st.session_state.evaluation_results.items():
                 evaluation_data.append({
-                    'Model': model_name,
+                    'Modelo': model_name,
                     'MAE': results['MAE'],
                     'RMSE': results['RMSE'],
                     'R²': results['R2'],
@@ -1648,7 +1663,7 @@ def main():
                 best_model_importance['Importance'].head(10)
             )
             ax.set_xlabel(get_text('Importance'))
-            ax.set_title(get_text('Top 10 Feature Importance'))
+            ax.set_title('Top 10 Características Importantes')
             st.pyplot(fig)
             
             # Show McNemar test results if available
@@ -1656,8 +1671,8 @@ def main():
                 st.subheader(get_text("mcnemar_test"))
                 for comparison, result in st.session_state.mcnemar_results.items():
                     st.write(f"**{comparison}**")
-                    st.write(f"Statistic: {result['statistic']:.4f}, p-value: {result['p_value']:.4f}")
-                    st.write(f"Significant: {result['significant']}")
+                    st.write(f"Estadístico: {result['statistic']:.4f}, valor p: {result['p_value']:.4f}")
+                    st.write(f"Significativo: {result['significant']}")
             
             # Show time series results if available
             if st.session_state.ts_results:
@@ -1665,12 +1680,12 @@ def main():
                 
                 # Plot time series forecast
                 fig, ax = plt.subplots(figsize=(12, 6))
-                ax.plot(st.session_state.ts_results['dates'], st.session_state.ts_results['actual'], label='Actual')
-                ax.plot(st.session_state.ts_results['dates'], st.session_state.ts_results['arima_forecast'], label='ARIMA Forecast')
-                ax.plot(st.session_state.ts_results['dates'], st.session_state.ts_results['hw_forecast'], label='Holt-Winters Forecast')
-                ax.set_xlabel('Date')
-                ax.set_ylabel('Value')
-                ax.set_title('Time Series Forecast')
+                ax.plot(st.session_state.ts_results['dates'], st.session_state.ts_results['actual'], label='Real')
+                ax.plot(st.session_state.ts_results['dates'], st.session_state.ts_results['arima_forecast'], label='Pronóstico ARIMA')
+                ax.plot(st.session_state.ts_results['dates'], st.session_state.ts_results['hw_forecast'], label='Pronóstico Holt-Winters')
+                ax.set_xlabel('Fecha')
+                ax.set_ylabel('Valor')
+                ax.set_title('Pronóstico de Series Temporales')
                 ax.legend()
                 st.pyplot(fig)
                 
@@ -1678,10 +1693,10 @@ def main():
                 col1, col2, col3 = st.columns(3)
                 col1.metric(get_text("theil_u") + " (ARIMA)", f"{st.session_state.ts_results['theil_u_arima']:.4f}")
                 col2.metric(get_text("theil_u") + " (Holt-Winters)", f"{st.session_state.ts_results['theil_u_hw']:.4f}")
-                col3.metric(get_text("diebold_mariano") + " p-value", f"{st.session_state.ts_results['dm_pvalue']:.4f}")
+                col3.metric(get_text("diebold_mariano") + " valor p", f"{st.session_state.ts_results['dm_pvalue']:.4f}")
 
     else:
-        st.info("Please upload a dataset to get started.")
+        st.info("Por favor, cargue un dataset para comenzar.")
 
     # Footer
     st.markdown("---")

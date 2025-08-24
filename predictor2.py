@@ -213,7 +213,7 @@ language_dict = {
         "mean_imputation": "Imputation par Moyenne/Mode",
         "knn_imputation": "Imputation KNN",
         "iterative_imputation": "Imputation Itérative",
-        "no_data_loaded": "Aucune donnée chargée. Veuillez télécharger un jeu de données d'abord.",
+        "no_data_loaded": "Aucune donnée chargée. Veuillez télécharger un jeu de datos d'abord.",
         "data_loaded": "Données chargées: {} enregistrements, {} variables",
         "preprocessing_first": "Vous devez d'abord prétraiter les datos",
         "select_target": "Sélectionnez la variable cible",
@@ -251,6 +251,8 @@ def initialize_session_state():
         st.session_state.current_page = "upload"
     if 'imputation_method' not in st.session_state:
         st.session_state.imputation_method = None
+    if 'scaler' not in st.session_state:
+        st.session_state.scaler = None
 
 # Función para obtener texto según el idioma
 def get_text(key):
@@ -615,6 +617,7 @@ def perform_preprocessing():
                 try:
                     scaler = StandardScaler()
                     processed_df[numerical_cols] = scaler.fit_transform(processed_df[numerical_cols])
+                    st.session_state.scaler = scaler
                     st.session_state.processed_data = processed_df
                     st.success("Escalado completado")
                     st.dataframe(processed_df.head())
@@ -648,6 +651,10 @@ def perform_preprocessing():
 # Función para preparar datos para modelado - CORREGIDA
 def prepare_data_for_modeling(X_data):
     """Prepara los datos eliminando o codificando variables categóricas"""
+    if X_data is None or X_data.empty:
+        st.error("Datos de entrada vacíos o nulos")
+        return pd.DataFrame()
+    
     X_clean = X_data.copy()
     
     # Guardar el índice original
@@ -711,6 +718,12 @@ def prepare_data_for_modeling(X_data):
     # Asegurar que el índice sea consistente
     X_clean.index = original_index
     
+    # Verificar que no haya valores NaN restantes
+    if X_clean.isnull().any().any():
+        # Si todavía hay NaN, eliminarlos
+        X_clean = X_clean.dropna()
+        st.warning("Se eliminaron filas con valores NaN restantes")
+    
     return X_clean
 
 # Modelo híbrido de red neuronal con lógica difusa (versión simplificada)
@@ -753,6 +766,11 @@ def train_models():
         # Verificar que tenemos datos después del preprocesamiento
         if X_train_clean.empty or X_val_clean.empty:
             st.error("No hay datos válidos para entrenar después del preprocesamiento.")
+            return
+            
+        # Verificar que las dimensiones coincidan
+        if X_train_clean.shape[1] != X_val_clean.shape[1]:
+            st.error(f"Dimensiones inconsistentes: X_train tiene {X_train_clean.shape[1]} features, X_val tiene {X_val_clean.shape[1]} features")
             return
             
     except Exception as e:
@@ -805,6 +823,12 @@ def train_models():
                     Dense(1)
                 ])
                 mlp_model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+                
+                # Verificar que los datos no estén vacíos
+                if len(X_train_clean) == 0 or len(y_train) == 0:
+                    st.error("Datos de entrenamiento vacíos")
+                    return
+                
                 history = mlp_model.fit(X_train_clean, y_train, 
                                        epochs=100, batch_size=32, 
                                        validation_data=(X_val_clean, y_val),
@@ -847,6 +871,7 @@ def train_models():
                 sequential_model.compile(optimizer=Adam(learning_rate=0.001), 
                                         loss='mse', 
                                         metrics=['mae'])
+                
                 history = sequential_model.fit(X_train_clean, y_train, 
                                               epochs=150, batch_size=32, 
                                               validation_data=(X_val_clean, y_val),
@@ -882,8 +907,19 @@ def train_models():
             try:
                 start_time = time.time()
                 
+                # Verificar que los datos estén disponibles
+                if X_train_clean is None or X_train_clean.empty:
+                    st.error("Datos de entrenamiento no disponibles")
+                    return
+                
                 # Parte de red neuronal (alternativa cuando scikit-fuzzy no está disponible)
                 hybrid_model = create_hybrid_model(X_train_clean.shape[1])
+                
+                # Verificar que los datos de entrenamiento no estén vacíos
+                if len(X_train_clean) == 0 or len(y_train) == 0:
+                    st.error("Datos de entrenamiento vacíos")
+                    return
+                
                 history = hybrid_model.fit(X_train_clean, y_train, 
                                           epochs=100, batch_size=32, 
                                           validation_data=(X_val_clean, y_val),
@@ -949,6 +985,12 @@ def perform_validation():
     try:
         X_val_clean = prepare_data_for_modeling(st.session_state.X_val)
         y_val = st.session_state.y_val
+        
+        # Verificar que los datos estén disponibles
+        if X_val_clean.empty:
+            st.error("Datos de validación vacíos después del preprocesamiento")
+            return
+            
     except Exception as e:
         st.error(f"Error preparando datos de validación: {str(e)}")
         return
@@ -965,9 +1007,17 @@ def perform_validation():
                 if len(y_pred.shape) > 1:
                     y_pred = y_pred.flatten()
                 
-                mae = mean_absolute_error(y_val, y_pred)
-                rmse = np.sqrt(mean_squared_error(y_val, y_pred))
-                r2 = r2_score(y_val, y_pred)
+                # Asegurar que las longitudes coincidan
+                if len(y_pred) != len(y_val):
+                    min_length = min(len(y_pred), len(y_val))
+                    y_pred = y_pred[:min_length]
+                    y_val_subset = y_val.iloc[:min_length] if hasattr(y_val, 'iloc') else y_val[:min_length]
+                else:
+                    y_val_subset = y_val
+                
+                mae = mean_absolute_error(y_val_subset, y_pred)
+                rmse = np.sqrt(mean_squared_error(y_val_subset, y_pred))
+                r2 = r2_score(y_val_subset, y_pred)
                 
                 results.append({
                     'Modelo': name,

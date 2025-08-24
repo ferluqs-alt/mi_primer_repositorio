@@ -34,7 +34,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Internacionalización (i18n)
+# Internacionalización (i18n) - CORREGIDO
 language_dict = {
     "ES": {
         "title": "Estimador de Precios de Viviendas",
@@ -62,7 +62,7 @@ language_dict = {
         "correlation_matrix": "Matriz de Correlación",
         "correlation_heatmap": "Mapa de Calor de Correlaciones",
         "strongest_correlations": "Correlaciones más Fuertes con el Precio",
-        "multicolinearity": "Análisis de Multicolinealidad",
+        "multicolinearity": "Análisis de Multicolinealidad",  # CORREGIDO: multicolineality -> multicolinearity
         "vif": "Factor de Inflación de Varianza (VIF)",
         "preprocessing_options": "Opciones de Preprocesamiento",
         "imputation": "Imputación de Valores Faltantes",
@@ -102,7 +102,7 @@ language_dict = {
         "correlation_matrix": "Correlation Matrix",
         "correlation_heatmap": "Correlation Heatmap",
         "strongest_correlations": "Strongest Correlations with Price",
-        "multicolinearity": "Multicollinearity Analysis",
+        "multicolinearity": "Multicollinearity Analysis",  # CORREGIDO
         "vif": "Variance Inflation Factor (VIF)",
         "preprocessing_options": "Preprocessing Options",
         "imputation": "Missing Value Imputation",
@@ -142,7 +142,7 @@ language_dict = {
         "correlation_matrix": "Matrice de Corrélation",
         "correlation_heatmap": "Carte de Chaleur des Corrélations",
         "strongest_correlations": "Corrélations les Plus Fortes avec le Prix",
-        "multicolinearity": "Analyse de Multicolinéarité",
+        "multicolinearity": "Analyse de Multicolinéarité",  # CORREGIDO
         "vif": "Facteur d'Inflation de la Variance (VIF)",
         "preprocessing_options": "Options de Prétraitement",
         "imputation": "Imputation des Valeurs Manquantes",
@@ -182,9 +182,13 @@ if 'y_val' not in st.session_state:
 if 'y_test' not in st.session_state:
     st.session_state.y_test = None
 
-# Función para obtener texto según el idioma
+# Función para obtener texto según el idioma - CON MEJOR MANEJO DE ERRORES
 def get_text(key):
-    return language_dict[st.session_state.language][key]
+    try:
+        return language_dict[st.session_state.language][key]
+    except KeyError:
+        st.error(f"Clave de traducción no encontrada: {key}")
+        return f"[{key}]"  # Devuelve la clave entre corchetes si no se encuentra
 
 # CSS personalizado para el diseño
 def local_css():
@@ -276,31 +280,38 @@ def perform_eda(df):
             # Eliminar valores nulos para la prueba
             col_data = df[col].dropna()
             if len(col_data) > 0:
-                stat, p_value = kstest(col_data, 'norm')
-                normality_results.append({
-                    'Variable': col,
-                    'Estadístico': stat,
-                    'p-valor': p_value,
-                    'Normal': p_value > 0.05
-                })
-        normality_df = pd.DataFrame(normality_results)
-        st.dataframe(normality_df)
+                try:
+                    stat, p_value = kstest(col_data, 'norm')
+                    normality_results.append({
+                        'Variable': col,
+                        'Estadístico': stat,
+                        'p-valor': p_value,
+                        'Normal': p_value > 0.05
+                    })
+                except:
+                    # Si hay error en la prueba de normalidad, saltar esta variable
+                    continue
+        if normality_results:
+            normality_df = pd.DataFrame(normality_results)
+            st.dataframe(normality_df)
+        else:
+            st.warning("No se pudieron realizar pruebas de normalidad para las variables numéricas")
     
     # Visualización
     st.subheader(get_text("visualization"))
     plot_type = st.selectbox("Tipo de gráfico", ["Histograma", "Boxplot", "Scatterplot"])
     
-    if plot_type == "Histograma":
+    if plot_type == "Histograma" and numerical_cols:
         col_to_plot = st.selectbox("Seleccione columna", numerical_cols)
         fig = px.histogram(df, x=col_to_plot, title=f"Histograma de {col_to_plot}")
         st.plotly_chart(fig)
     
-    elif plot_type == "Boxplot":
+    elif plot_type == "Boxplot" and numerical_cols:
         col_to_plot = st.selectbox("Seleccione columna", numerical_cols)
         fig = px.box(df, y=col_to_plot, title=f"Boxplot de {col_to_plot}")
         st.plotly_chart(fig)
     
-    elif plot_type == "Scatterplot":
+    elif plot_type == "Scatterplot" and numerical_cols and len(numerical_cols) >= 2:
         col_x = st.selectbox("Seleccione variable X", numerical_cols)
         col_y = st.selectbox("Seleccione variable Y", numerical_cols)
         fig = px.scatter(df, x=col_x, y=col_y, title=f"Scatterplot: {col_x} vs {col_y}")
@@ -335,12 +346,13 @@ def perform_correlation_analysis(df):
         # Scatter plots con las variables más correlacionadas
         top_correlated = target_correlations.index[1:4]  # Excluye la correlación consigo misma
         for col in top_correlated:
-            fig = px.scatter(df, x=col, y=st.session_state.target_column, 
-                            title=f"{col} vs {st.session_state.target_column}")
-            st.plotly_chart(fig)
+            if col in df.columns and st.session_state.target_column in df.columns:
+                fig = px.scatter(df, x=col, y=st.session_state.target_column, 
+                                title=f"{col} vs {st.session_state.target_column}")
+                st.plotly_chart(fig)
     
     # Análisis de multicolinealidad (VIF)
-    st.subheader(get_text("multicolineality"))
+    st.subheader(get_text("multicolinearity"))  # CORREGIDO: multicolineality -> multicolinearity
     if len(numerical_df.columns) > 1:
         vif_data = pd.DataFrame()
         vif_data["Variable"] = numerical_df.columns
@@ -351,8 +363,11 @@ def perform_correlation_analysis(df):
             # Eliminar NaNs para el cálculo de VIF
             temp_df = numerical_df.dropna()
             if len(temp_df) > 0:
-                vif = variance_inflation_factor(temp_df.values, i)
-                vif_values.append(vif)
+                try:
+                    vif = variance_inflation_factor(temp_df.values, i)
+                    vif_values.append(vif)
+                except:
+                    vif_values.append(np.nan)
             else:
                 vif_values.append(np.nan)
         
@@ -383,24 +398,36 @@ def perform_preprocessing(df):
         if imputation_method == "Media/Moda":
             for col in numerical_cols:
                 if processed_df[col].isnull().sum() > 0:
-                    mean_val = processed_df[col].mean()
-                    processed_df[col].fillna(mean_val, inplace=True)
+                    try:
+                        mean_val = processed_df[col].mean()
+                        processed_df[col].fillna(mean_val, inplace=True)
+                    except:
+                        st.warning(f"No se pudo calcular la media para {col}")
             
             for col in categorical_cols:
                 if processed_df[col].isnull().sum() > 0:
-                    mode_val = processed_df[col].mode()[0] if not processed_df[col].mode().empty else "Desconocido"
-                    processed_df[col].fillna(mode_val, inplace=True)
+                    try:
+                        mode_val = processed_df[col].mode()[0] if not processed_df[col].mode().empty else "Desconocido"
+                        processed_df[col].fillna(mode_val, inplace=True)
+                    except:
+                        st.warning(f"No se pudo calcular la moda para {col}")
         
         elif imputation_method == "KNN":
             st.warning("La imputación KNN puede ser lenta para conjuntos de datos grandes")
             if st.button("Aplicar imputación KNN"):
-                numerical_imputer = KNNImputer(n_neighbors=5)
-                processed_df[numerical_cols] = numerical_imputer.fit_transform(processed_df[numerical_cols])
-                
-                for col in categorical_cols:
-                    if processed_df[col].isnull().sum() > 0:
-                        mode_val = processed_df[col].mode()[0] if not processed_df[col].mode().empty else "Desconocido"
-                        processed_df[col].fillna(mode_val, inplace=True)
+                try:
+                    numerical_imputer = KNNImputer(n_neighbors=5)
+                    processed_df[numerical_cols] = numerical_imputer.fit_transform(processed_df[numerical_cols])
+                    
+                    for col in categorical_cols:
+                        if processed_df[col].isnull().sum() > 0:
+                            try:
+                                mode_val = processed_df[col].mode()[0] if not processed_df[col].mode().empty else "Desconocido"
+                                processed_df[col].fillna(mode_val, inplace=True)
+                            except:
+                                st.warning(f"No se pudo calcular la moda para {col}")
+                except Exception as e:
+                    st.error(f"Error en imputación KNN: {str(e)}")
     
     # Tratamiento de outliers
     st.subheader(get_text("outlier_treatment"))
@@ -413,16 +440,19 @@ def perform_preprocessing(df):
             numerical_cols.remove(st.session_state.target_column)
         
         for col in numerical_cols:
-            Q1 = processed_df[col].quantile(0.25)
-            Q3 = processed_df[col].quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
-            
-            if outlier_treatment == "Eliminación":
-                processed_df = processed_df[(processed_df[col] >= lower_bound) & (processed_df[col] <= upper_bound)]
-            elif outlier_treatment == "Transformación":
-                processed_df[col] = np.log1p(processed_df[col])
+            try:
+                Q1 = processed_df[col].quantile(0.25)
+                Q3 = processed_df[col].quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                
+                if outlier_treatment == "Eliminación":
+                    processed_df = processed_df[(processed_df[col] >= lower_bound) & (processed_df[col] <= upper_bound)]
+                elif outlier_treatment == "Transformación":
+                    processed_df[col] = np.log1p(processed_df[col])
+            except:
+                st.warning(f"No se pudo procesar outliers para {col}")
     
     # Codificación de variables categóricas
     st.subheader(get_text("encoding"))
@@ -433,11 +463,17 @@ def perform_preprocessing(df):
         categorical_cols = processed_df.select_dtypes(include=['object']).columns.tolist()
         
         if encoding_method == "One-Hot Encoding":
-            processed_df = pd.get_dummies(processed_df, columns=categorical_cols, drop_first=True)
+            try:
+                processed_df = pd.get_dummies(processed_df, columns=categorical_cols, drop_first=True)
+            except Exception as e:
+                st.error(f"Error en One-Hot Encoding: {str(e)}")
         elif encoding_method == "Label Encoding":
-            le = LabelEncoder()
-            for col in categorical_cols:
-                processed_df[col] = le.fit_transform(processed_df[col].astype(str))
+            try:
+                le = LabelEncoder()
+                for col in categorical_cols:
+                    processed_df[col] = le.fit_transform(processed_df[col].astype(str))
+            except Exception as e:
+                st.error(f"Error en Label Encoding: {str(e)}")
     
     st.session_state.processed_data = processed_df
     st.success("Preprocesamiento completado")
@@ -465,12 +501,15 @@ def perform_scaling_split(df):
             numerical_cols.remove(st.session_state.target_column)
         
         if scaling_method == "StandardScaler":
-            scaler = StandardScaler()
-            df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
+            try:
+                scaler = StandardScaler()
+                df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
+            except Exception as e:
+                st.error(f"Error en escalado: {str(e)}")
     
     # División de datos
     st.subheader(get_text("train_val_test_split"))
-    if st.session_state.target_column:
+    if st.session_state.target_column and st.session_state.target_column in df.columns:
         X = df.drop(st.session_state.target_column, axis=1)
         y = df[st.session_state.target_column]
         
@@ -505,49 +544,55 @@ def perform_modeling(X_train, y_train):
     # Regresión Lineal
     if st.button("Entrenar Regresión Lineal"):
         with st.spinner("Entrenando Regresión Lineal..."):
-            start_time = time.time()
-            lr_model = LinearRegression()
-            lr_model.fit(X_train, y_train)
-            training_time = time.time() - start_time
-            
-            models['Linear Regression'] = {
-                'model': lr_model,
-                'training_time': training_time
-            }
-            
-            st.success(f"Regresión Lineal entrenada en {training_time:.2f} segundos")
+            try:
+                start_time = time.time()
+                lr_model = LinearRegression()
+                lr_model.fit(X_train, y_train)
+                training_time = time.time() - start_time
+                
+                models['Linear Regression'] = {
+                    'model': lr_model,
+                    'training_time': training_time
+                }
+                
+                st.success(f"Regresión Lineal entrenada en {training_time:.2f} segundos")
+            except Exception as e:
+                st.error(f"Error entrenando Regresión Lineal: {str(e)}")
     
     # Red Neuronal (MLP)
     if st.button("Entrenar Perceptrón Multicapa (MLP)"):
         with st.spinner("Entrenando MLP..."):
-            start_time = time.time()
-            
-            # Verificar que hay datos para entrenar
-            if len(X_train) == 0:
-                st.error("No hay datos de entrenamiento disponibles")
-                return
-            
-            mlp_model = Sequential([
-                Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
-                Dense(32, activation='relu'),
-                Dense(1)
-            ])
-            mlp_model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-            history = mlp_model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=0)
-            training_time = time.time() - start_time
-            
-            models['MLP'] = {
-                'model': mlp_model,
-                'training_time': training_time,
-                'history': history
-            }
-            
-            st.success(f"MLP entrenado en {training_time:.2f} segundos")
-            
-            # Gráfico de pérdida durante el entrenamiento
-            fig = px.line(x=range(len(history.history['loss'])), y=history.history['loss'], 
-                         labels={'x': 'Época', 'y': 'Pérdida'}, title='Pérdida durante el entrenamiento')
-            st.plotly_chart(fig)
+            try:
+                start_time = time.time()
+                
+                # Verificar que hay datos para entrenar
+                if len(X_train) == 0:
+                    st.error("No hay datos de entrenamiento disponibles")
+                    return
+                
+                mlp_model = Sequential([
+                    Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
+                    Dense(32, activation='relu'),
+                    Dense(1)
+                ])
+                mlp_model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+                history = mlp_model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=0)
+                training_time = time.time() - start_time
+                
+                models['MLP'] = {
+                    'model': mlp_model,
+                    'training_time': training_time,
+                    'history': history
+                }
+                
+                st.success(f"MLP entrenado en {training_time:.2f} segundos")
+                
+                # Gráfico de pérdida durante el entrenamiento
+                fig = px.line(x=range(len(history.history['loss'])), y=history.history['loss'], 
+                             labels={'x': 'Época', 'y': 'Pérdida'}, title='Pérdida durante el entrenamiento')
+                st.plotly_chart(fig)
+            except Exception as e:
+                st.error(f"Error entrenando MLP: {str(e)}")
     
     st.session_state.models = models
     return models
@@ -567,24 +612,27 @@ def perform_validation(models, X_val, y_val):
         
         # Predecir
         if hasattr(model, 'predict'):
-            y_pred = model.predict(X_val)
-            
-            # Aplanar si es necesario
-            if len(y_pred.shape) > 1:
-                y_pred = y_pred.flatten()
-            
-            # Calcular métricas
-            mae = mean_absolute_error(y_val, y_pred)
-            rmse = np.sqrt(mean_squared_error(y_val, y_pred))
-            r2 = r2_score(y_val, y_pred)
-            
-            results.append({
-                'Modelo': name,
-                'MAE': mae,
-                'RMSE': rmse,
-                'R²': r2,
-                'Tiempo de entrenamiento (s)': training_time
-            })
+            try:
+                y_pred = model.predict(X_val)
+                
+                # Aplanar si es necesario
+                if len(y_pred.shape) > 1:
+                    y_pred = y_pred.flatten()
+                
+                # Calcular métricas
+                mae = mean_absolute_error(y_val, y_pred)
+                rmse = np.sqrt(mean_squared_error(y_val, y_pred))
+                r2 = r2_score(y_val, y_pred)
+                
+                results.append({
+                    'Modelo': name,
+                    'MAE': mae,
+                    'RMSE': rmse,
+                    'R²': r2,
+                    'Tiempo de entrenamiento (s)': training_time
+                })
+            except Exception as e:
+                st.warning(f"No se pudieron calcular métricas para {name}: {str(e)}")
     
     # Mostrar resultados
     if results:

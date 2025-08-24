@@ -579,17 +579,17 @@ def handle_null_values(df):
     st.header(get_text("null_handling_header"))
     
     # Mostrar resumen de valores nulos
-    #if st.checkbox(get_text("show_null_summary"), value=True):
-     #   null_summary = df.isnull().sum()
-      #  null_summary = null_summary[null_summary > 0]
+    if st.checkbox(get_text("show_null_summary"), value=True):
+        null_summary = df.isnull().sum()
+        null_summary = null_summary[null_summary > 0]
         
-     #   if len(null_summary) > 0:
-      #      st.subheader(get_text("null_summary_title"))
-      #      st.dataframe(pd.DataFrame({
-       #         'Column': null_summary.index,
-        #        'Null Count': null_summary.values,
-         #       'Percentage': (null_summary.values / len(df) * 100).round(2)
-          #  }))
+        if len(null_summary) > 0:
+            st.subheader(get_text("null_summary_title"))
+            st.dataframe(pd.DataFrame({
+                'Column': null_summary.index,
+                'Null Count': null_summary.values,
+                'Percentage': (null_summary.values / len(df) * 100).round(2)
+            }))
             
             # Selector de estrategia por columna
             st.subheader(get_text("select_null_strategy"))
@@ -1705,3 +1705,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+

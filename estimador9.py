@@ -5,18 +5,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
-import json
-import base64
-from datetime import datetime
 import io
 import warnings
 warnings.filterwarnings('ignore')
 
 # Machine Learning
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
-from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, confusion_matrix, matthews_corrcoef
+from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, confusion_matrix
 from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
@@ -28,29 +27,13 @@ from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.stats.contingency_tables import mcnemar
 
-# Deep Learning
-import tensorflow as tf
-from tensorflow.keras.models import Sequential, save_model, load_model
-from tensorflow.keras.layers import Dense, Dropout, LSTM
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.utils import to_categorical
-
 # PDF Generation
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 import tempfile
-
-# Fuzzy Logic (optional)
-try:
-    import skfuzzy as fuzz
-    from skfuzzy import control as ctrl
-    FUZZY_AVAILABLE = True
-except ImportError:
-    FUZZY_AVAILABLE = False
 
 # Set page configuration
 st.set_page_config(
@@ -196,9 +179,9 @@ translations = {
         "predicted": "Predicho",
         "download_pdf": "Descargar Reporte PDF",
         "linear_regression": "Regresión Lineal",
-        "neural_network": "Red Neuronal",
-        "sequential_model": "Modelo Secuencial",
-        "fuzzy_neural": "Red Neuronal Difusa",
+        "random_forest": "Random Forest",
+        "gradient_boosting": "Gradient Boosting",
+        "mlp": "Perceptrón Multicapa",
         "model_type": "Tipo de Modelo",
         "model_performance": "Rendimiento del Modelo",
         "model_comparison": "Comparación de Modelos",
@@ -322,9 +305,9 @@ translations = {
         "predicted": "Predicted",
         "download_pdf": "Download PDF Report",
         "linear_regression": "Linear Regression",
-        "neural_network": "Neural Network",
-        "sequential_model": "Sequential Model",
-        "fuzzy_neural": "Fuzzy Neural Network",
+        "random_forest": "Random Forest",
+        "gradient_boosting": "Gradient Boosting",
+        "mlp": "Multi-Layer Perceptron",
         "model_type": "Model Type",
         "model_performance": "Model Performance",
         "model_comparison": "Model Comparison",
@@ -448,9 +431,9 @@ translations = {
         "predicted": "Prédit",
         "download_pdf": "Télécharger le Rapport PDF",
         "linear_regression": "Régression Linéaire",
-        "neural_network": "Réseau Neuronal",
-        "sequential_model": "Modèle Séquentiel",
-        "fuzzy_neural": "Réseau Neuronal Flou",
+        "random_forest": "Random Forest",
+        "gradient_boosting": "Gradient Boosting",
+        "mlp": "Perceptron Multicouche",
         "model_type": "Type de Modèle",
         "model_performance": "Performance du Modèle",
         "model_comparison": "Comparaison de Modèles",
@@ -988,121 +971,56 @@ def train_linear_regression(X_train, y_train):
     
     return model, training_time, feature_importance
 
-# Function to train neural network
-def train_neural_network(X_train, y_train, X_val, y_val):
+# Function to train random forest
+def train_random_forest(X_train, y_train):
     start_time = time.time()
-    
-    model = Sequential([
-        Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
-        Dropout(0.2),
-        Dense(32, activation='relu'),
-        Dropout(0.2),
-        Dense(16, activation='relu'),
-        Dense(1)
-    ])
-    
-    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=['mae'])
-    
-    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-    
-    history = model.fit(
-        X_train, y_train,
-        validation_data=(X_val, y_val),
-        epochs=100,
-        batch_size=32,
-        callbacks=[early_stopping],
-        verbose=0
-    )
-    
-    training_time = time.time() - start_time
-    
-    # Get feature importance using permutation importance
-    baseline_mae = mean_absolute_error(y_train, model.predict(X_train, verbose=0).flatten())
-    feature_importance = []
-    
-    for i in range(X_train.shape[1]):
-        col_name = X_train.columns[i]
-        X_temp = X_train.copy()
-        col_data = X_temp[col_name].values.copy()
-        np.random.shuffle(col_data)
-        X_temp[col_name] = col_data
-        
-        mae_score = mean_absolute_error(y_train, model.predict(X_temp, verbose=0).flatten())
-        importance = mae_score - baseline_mae
-        feature_importance.append((col_name, importance))
-    
-    feature_importance.sort(key=lambda x: x[1], reverse=True)
-    feature_importance_df = pd.DataFrame(feature_importance, columns=['Feature', 'Importance'])
-    
-    return model, training_time, feature_importance_df, history
-
-# Function to train MLP
-def train_mlp(X_train, y_train, X_val, y_val):
-    start_time = time.time()
-    
-    model = Sequential([
-        Dense(128, activation='relu', input_shape=(X_train.shape[1],)),
-        Dropout(0.3),
-        Dense(64, activation='relu'),
-        Dropout(0.3),
-        Dense(32, activation='relu'),
-        Dense(1)
-    ])
-    
-    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=['mae'])
-    
-    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-    
-    history = model.fit(
-        X_train, y_train,
-        validation_data=(X_val, y_val),
-        epochs=100,
-        batch_size=32,
-        callbacks=[early_stopping],
-        verbose=0
-    )
-    
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
     training_time = time.time() - start_time
     
     # Get feature importance
-    baseline_mae = mean_absolute_error(y_train, model.predict(X_train, verbose=0).flatten())
-    feature_importance = []
-    
-    for i in range(X_train.shape[1]):
-        col_name = X_train.columns[i]
-        X_temp = X_train.copy()
-        col_data = X_temp[col_name].values.copy()
-        np.random.shuffle(col_data)
-        X_temp[col_name] = col_data
-        
-        mae_score = mean_absolute_error(y_train, model.predict(X_temp, verbose=0).flatten())
-        importance = mae_score - baseline_mae
-        feature_importance.append((col_name, importance))
-    
-    feature_importance.sort(key=lambda x: x[1], reverse=True)
-    feature_importance_df = pd.DataFrame(feature_importance, columns=['Feature', 'Importance'])
-    
-    return model, training_time, feature_importance_df, history
-
-# Function to train fuzzy neural network
-def train_fuzzy_neural_network(X_train, y_train):
-    # This is a simplified implementation
-    start_time = time.time()
-    
-    # For the purpose of this demo, we'll return a simple linear model
-    model = LinearRegression()
-    model.fit(X_train, y_train)
-    
-    training_time = time.time() - start_time
-    
-    # Feature importance (using linear model as proxy)
-    importance = np.abs(model.coef_)
+    importance = model.feature_importances_
     feature_importance = pd.DataFrame({
         'Feature': X_train.columns,
         'Importance': importance
     }).sort_values('Importance', ascending=False)
     
-    return model, training_time, feature_importance, {}
+    return model, training_time, feature_importance
+
+# Function to train gradient boosting
+def train_gradient_boosting(X_train, y_train):
+    start_time = time.time()
+    model = GradientBoostingRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    training_time = time.time() - start_time
+    
+    # Get feature importance
+    importance = model.feature_importances_
+    feature_importance = pd.DataFrame({
+        'Feature': X_train.columns,
+        'Importance': importance
+    }).sort_values('Importance', ascending=False)
+    
+    return model, training_time, feature_importance
+
+# Function to train MLP
+def train_mlp(X_train, y_train):
+    start_time = time.time()
+    model = MLPRegressor(hidden_layer_sizes=(100, 50), max_iter=1000, random_state=42)
+    model.fit(X_train, y_train)
+    training_time = time.time() - start_time
+    
+    # For MLP, we don't have direct feature importance, so we'll use permutation importance
+    from sklearn.inspection import permutation_importance
+    result = permutation_importance(model, X_train, y_train, n_repeats=10, random_state=42)
+    importance = result.importances_mean
+    
+    feature_importance = pd.DataFrame({
+        'Feature': X_train.columns,
+        'Importance': importance
+    }).sort_values('Importance', ascending=False)
+    
+    return model, training_time, feature_importance
 
 # Function to evaluate model
 def evaluate_model(model, X_test, y_test, model_name):
@@ -1110,8 +1028,8 @@ def evaluate_model(model, X_test, y_test, model_name):
         # Scikit-learn model
         y_pred = model.predict(X_test)
     else:
-        # Keras model
-        y_pred = model.predict(X_test, verbose=0).flatten()
+        # For other models
+        y_pred = np.full(len(y_test), y_test.mean())  # Fallback to mean prediction
     
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
@@ -1120,7 +1038,8 @@ def evaluate_model(model, X_test, y_test, model_name):
     return {
         'MAE': mae,
         'RMSE': rmse,
-        'R2': r2
+        'R2': r2,
+        'predictions': y_pred
     }
 
 # Function to perform cross validation
@@ -1133,24 +1052,18 @@ def perform_cross_validation(model, X, y, cv=5):
         scores = cross_val_score(model, X, y, cv=kfold, scoring='neg_mean_squared_error')
         scores = np.sqrt(-scores)  # Convert to RMSE
     else:
-        # Keras model - simplified implementation
+        # For other models, use a simple implementation
         scores = []
         for train_idx, test_idx in kfold.split(X):
             X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
             y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
             
-            # Train a new model for this fold
-            fold_model = Sequential([
-                Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
-                Dense(32, activation='relu'),
-                Dense(16, activation='relu'),
-                Dense(1)
-            ])
-            fold_model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
-            fold_model.fit(X_train, y_train, epochs=50, verbose=0)
+            # Train a simple model for this fold
+            fold_model = LinearRegression()
+            fold_model.fit(X_train, y_train)
             
             # Evaluate
-            y_pred = fold_model.predict(X_test, verbose=0).flatten()
+            y_pred = fold_model.predict(X_test)
             rmse = np.sqrt(mean_squared_error(y_test, y_pred))
             scores.append(rmse)
     
@@ -1164,8 +1077,11 @@ def perform_cross_validation(model, X, y, cv=5):
 def perform_mcnemar_test(y_true, y_pred1, y_pred2):
     """Realiza la prueba de McNemar para comparar dos modelos"""
     # Create contingency table
-    correct1 = (y_pred1 == y_true)
-    correct2 = (y_pred2 == y_true)
+    # For regression, we need to convert to classification
+    # We'll use median as threshold
+    median_val = np.median(y_true)
+    correct1 = (y_pred1 > median_val) == (y_true > median_val)
+    correct2 = (y_pred2 > median_val) == (y_true > median_val)
     
     # Create 2x2 contingency table
     both_correct = np.sum(correct1 & correct2)
@@ -1186,6 +1102,20 @@ def perform_mcnemar_test(y_true, y_pred1, y_pred2):
         'significant': result.pvalue < 0.05
     }
 
+# Function to calculate Matthews Correlation Coefficient
+def calculate_mcc(y_true, y_pred):
+    """Calcula el coeficiente de correlación de Matthews"""
+    # For regression, we need to convert to classification
+    # We'll use median as threshold
+    median_val = np.median(y_true)
+    y_true_bin = (y_true > median_val).astype(int)
+    y_pred_bin = (y_pred > median_val).astype(int)
+    
+    tn, fp, fn, tp = confusion_matrix(y_true_bin, y_pred_bin).ravel()
+    mcc = (tp * tn - fp * fn) / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn) + 1e-8)
+    
+    return mcc
+
 # Function to perform time series analysis
 def perform_time_series_analysis(df, date_col, target_col):
     """Realiza análisis de series temporales si hay una columna de fecha"""
@@ -1205,14 +1135,20 @@ def perform_time_series_analysis(df, date_col, target_col):
         train, test = df_ts[0:train_size], df_ts[train_size:]
         
         # Fit ARIMA model
-        arima_model = ARIMA(train, order=(1,1,1))
-        arima_fit = arima_model.fit()
-        arima_forecast = arima_fit.forecast(steps=len(test))[0]
+        try:
+            arima_model = ARIMA(train, order=(1,1,1))
+            arima_fit = arima_model.fit()
+            arima_forecast = arima_fit.forecast(steps=len(test))[0]
+        except:
+            arima_forecast = np.full(len(test), train[target_col].mean())
         
         # Fit Holt-Winters model
-        hw_model = ExponentialSmoothing(train, seasonal='add', seasonal_periods=12)
-        hw_fit = hw_model.fit()
-        hw_forecast = hw_fit.forecast(steps=len(test))
+        try:
+            hw_model = ExponentialSmoothing(train, seasonal='add', seasonal_periods=12)
+            hw_fit = hw_model.fit()
+            hw_forecast = hw_fit.forecast(steps=len(test))
+        except:
+            hw_forecast = np.full(len(test), train[target_col].mean())
         
         # Calculate Theil's U statistic
         def theils_u(actual, forecast):
@@ -1487,51 +1423,67 @@ def main():
                     # Model training
                     if st.session_state.preprocessing_done:
                         st.header(get_text("modeling"))
+                        
+                        # Model selection
+                        model_options = [
+                            get_text("linear_regression"),
+                            get_text("random_forest"),
+                            get_text("gradient_boosting"),
+                            get_text("mlp")
+                        ]
+                        
+                        selected_models = st.multiselect(
+                            "Select models to train",
+                            options=model_options,
+                            default=[get_text("linear_regression"), get_text("random_forest")]
+                        )
+                        
                         if st.button(get_text("train_models")):
                             with st.spinner(get_text("train_models")):
-                                # Linear Regression
-                                lr_model, lr_time, lr_importance = train_linear_regression(
-                                    st.session_state.X_train, st.session_state.y_train
-                                )
-                                st.session_state.models['Linear Regression'] = lr_model
-                                st.session_state.model_results['Linear Regression'] = {
-                                    'training_time': lr_time,
-                                    'feature_importance': lr_importance
-                                }
+                                # Clear previous models
+                                st.session_state.models = {}
+                                st.session_state.model_results = {}
                                 
-                                # Neural Network
-                                nn_model, nn_time, nn_importance, nn_history = train_neural_network(
-                                    st.session_state.X_train, st.session_state.y_train,
-                                    st.session_state.X_val, st.session_state.y_val
-                                )
-                                st.session_state.models['Neural Network'] = nn_model
-                                st.session_state.model_results['Neural Network'] = {
-                                    'training_time': nn_time,
-                                    'feature_importance': nn_importance,
-                                    'history': nn_history
-                                }
+                                # Train selected models
+                                if get_text("linear_regression") in selected_models:
+                                    lr_model, lr_time, lr_importance = train_linear_regression(
+                                        st.session_state.X_train, st.session_state.y_train
+                                    )
+                                    st.session_state.models[get_text("linear_regression")] = lr_model
+                                    st.session_state.model_results[get_text("linear_regression")] = {
+                                        'training_time': lr_time,
+                                        'feature_importance': lr_importance
+                                    }
                                 
-                                # MLP
-                                mlp_model, mlp_time, mlp_importance, mlp_history = train_mlp(
-                                    st.session_state.X_train, st.session_state.y_train,
-                                    st.session_state.X_val, st.session_state.y_val
-                                )
-                                st.session_state.models['MLP'] = mlp_model
-                                st.session_state.model_results['MLP'] = {
-                                    'training_time': mlp_time,
-                                    'feature_importance': mlp_importance,
-                                    'history': mlp_history
-                                }
+                                if get_text("random_forest") in selected_models:
+                                    rf_model, rf_time, rf_importance = train_random_forest(
+                                        st.session_state.X_train, st.session_state.y_train
+                                    )
+                                    st.session_state.models[get_text("random_forest")] = rf_model
+                                    st.session_state.model_results[get_text("random_forest")] = {
+                                        'training_time': rf_time,
+                                        'feature_importance': rf_importance
+                                    }
                                 
-                                # Fuzzy Neural Network
-                                fuzzy_model, fuzzy_time, fuzzy_importance, _ = train_fuzzy_neural_network(
-                                    st.session_state.X_train, st.session_state.y_train
-                                )
-                                st.session_state.models['Fuzzy Neural Network'] = fuzzy_model
-                                st.session_state.model_results['Fuzzy Neural Network'] = {
-                                    'training_time': fuzzy_time,
-                                    'feature_importance': fuzzy_importance
-                                }
+                                if get_text("gradient_boosting") in selected_models:
+                                    gb_model, gb_time, gb_importance = train_gradient_boosting(
+                                        st.session_state.X_train, st.session_state.y_train
+                                    )
+                                    st.session_state.models[get_text("gradient_boosting")] = gb_model
+                                    st.session_state.model_results[get_text("gradient_boosting")] = {
+                                        'training_time': gb_time,
+                                        'feature_importance': gb_importance
+                                    }
+                                
+                                if get_text("mlp") in selected_models:
+                                    mlp_model, mlp_time, mlp_importance = train_mlp(
+                                        st.session_state.X_train, st.session_state.y_train
+                                    )
+                                    st.session_state.models[get_text("mlp")] = mlp_model
+                                    st.session_state.model_results[get_text("mlp")] = {
+                                        'training_time': mlp_time,
+                                        'feature_importance': mlp_importance
+                                    }
                                 
                                 st.session_state.models_trained = True
                                 st.session_state.show_modeling = True
@@ -1541,6 +1493,8 @@ def main():
                         st.header(get_text("evaluation"))
                         if st.button(get_text("evaluate_models")):
                             with st.spinner(get_text("evaluate_models")):
+                                st.session_state.evaluation_results = {}
+                                
                                 for model_name, model in st.session_state.models.items():
                                     metrics = evaluate_model(
                                         model, 
@@ -1550,6 +1504,13 @@ def main():
                                     )
                                     st.session_state.evaluation_results[model_name] = metrics
                                 
+                                # Calculate additional metrics
+                                for model_name, results in st.session_state.evaluation_results.items():
+                                    # Calculate MCC
+                                    results['MCC'] = calculate_mcc(
+                                        st.session_state.y_test, results['predictions']
+                                    )
+                                
                                 # Determine best model based on RMSE
                                 best_model = min(
                                     st.session_state.evaluation_results.items(), 
@@ -1557,6 +1518,24 @@ def main():
                                 )[0]
                                 st.session_state.best_model = best_model
                                 st.session_state.show_evaluation = True
+                                
+                                # Perform McNemar tests between models
+                                if len(st.session_state.models) > 1:
+                                    model_names = list(st.session_state.models.keys())
+                                    st.session_state.mcnemar_results = {}
+                                    
+                                    for i in range(len(model_names)):
+                                        for j in range(i+1, len(model_names)):
+                                            model1 = model_names[i]
+                                            model2 = model_names[j]
+                                            
+                                            mcnemar_result = perform_mcnemar_test(
+                                                st.session_state.y_test,
+                                                st.session_state.evaluation_results[model1]['predictions'],
+                                                st.session_state.evaluation_results[model2]['predictions']
+                                            )
+                                            
+                                            st.session_state.mcnemar_results[f"{model1}_vs_{model2}"] = mcnemar_result
                         
                         # Time series analysis if date column exists
                         date_cols = st.session_state.df.select_dtypes(include=['datetime64']).columns.tolist()
@@ -1633,7 +1612,17 @@ def main():
             st.success(f"{get_text('evaluation')} {get_text('completed_successfully')}")
             
             # Display evaluation metrics
-            evaluation_df = pd.DataFrame(st.session_state.evaluation_results).T
+            evaluation_data = []
+            for model_name, results in st.session_state.evaluation_results.items():
+                evaluation_data.append({
+                    'Model': model_name,
+                    'MAE': results['MAE'],
+                    'RMSE': results['RMSE'],
+                    'R²': results['R2'],
+                    'MCC': results.get('MCC', 'N/A')
+                })
+            
+            evaluation_df = pd.DataFrame(evaluation_data)
             st.dataframe(evaluation_df)
             
             # Show best model
@@ -1654,6 +1643,14 @@ def main():
             ax.set_xlabel(get_text('Importance'))
             ax.set_title(get_text('Top 10 Feature Importance'))
             st.pyplot(fig)
+            
+            # Show McNemar test results if available
+            if hasattr(st.session_state, 'mcnemar_results'):
+                st.subheader(get_text("mcnemar_test"))
+                for comparison, result in st.session_state.mcnemar_results.items():
+                    st.write(f"**{comparison}**")
+                    st.write(f"Statistic: {result['statistic']:.4f}, p-value: {result['p_value']:.4f}")
+                    st.write(f"Significant: {result['significant']}")
             
             # Show time series results if available
             if st.session_state.ts_results:

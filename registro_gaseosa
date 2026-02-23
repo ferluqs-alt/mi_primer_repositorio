@@ -1,0 +1,66 @@
+from datetime import datetime
+
+class RegistroGaseosas:
+    def __init__(self):
+        # Definimos el catálogo para asegurar INTEGRIDAD (solo estos productos existen)
+        self.catalogo = {
+            "1": "2 Litros",
+            "2": "1 1/2 Litros",
+            "3": "1/2 lt Gordita",
+            "4": "1/2 Agua Mineral",
+            "5": "1/2 Gaseosa Descartable",
+            "6": "Cerveza Trujillo",
+            "7": "Cerveza Callao",
+            "8": "Cerveza Cuzqueña",
+            "9": "Cerveza Negra"
+        }
+        # Diccionario para almacenar el conteo del día
+        self.ventas_del_dia = {producto: 0 for producto in self.catalogo.values()}
+
+    def mostrar_menu(self):
+        print(f"\n--- MENÚ DE REGISTRO ({datetime.now().strftime('%d/%m/%Y')}) ---")
+        for llave, nombre in self.catalogo.items():
+            print(f"{llave}. {nombre}")
+        print("0. Salir y mostrar resumen")
+
+    def registrar_consumo(self):
+        while True:
+            self.mostrar_menu()
+            opcion = input("\nSeleccione el producto (número): ")
+
+            if opcion == "0":
+                self.mostrar_resumen()
+                break
+            
+            # Validación de CONSISTENCIA: ¿Existe la opción?
+            if opcion in self.catalogo:
+                try:
+                    cantidad = int(input(f"¿Cuántas unidades de {self.catalogo[opcion]} se consumieron?: "))
+                    if cantidad > 0:
+                        self.ventas_del_dia[self.catalogo[opcion]] += cantidad
+                        print(f">> Registrado: {cantidad} unidades de {self.catalogo[opcion]}.")
+                    else:
+                        print("!! Error: La cantidad debe ser mayor a cero.")
+                except ValueError:
+                    print("!! Error: Por favor, ingrese un número entero válido.")
+            else:
+                print("!! Opción no válida. Intente de nuevo.")
+
+    def mostrar_resumen(self):
+        print("\n" + "="*30)
+        print(" RESUMEN DE CONSUMO DIARIO ")
+        print("="*30)
+        total_unidades = 0
+        for producto, cantidad in self.ventas_del_dia.items():
+            if cantidad > 0:
+                print(f"{producto.ljust(25)}: {cantidad} und.")
+                total_unidades += cantidad
+        
+        print("-" * 30)
+        print(f"Total de bebidas vendidas: {total_unidades}")
+        print("="*30)
+
+# Ejecución del programa
+if __name__ == "__main__":
+    sistema = RegistroGaseosas()
+    sistema.registrar_consumo()
